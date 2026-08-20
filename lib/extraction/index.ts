@@ -33,6 +33,28 @@ function countWords(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
+function hasMeaningfulText(text: string): boolean {
+  const normalized = text
+    .replace(/--\s*\d+\s+of\s+\d+\s+--/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  // Very small amounts of extracted text are often PDF artifacts,
+  // page labels, or metadata rather than actual document content.
+  if (normalized.length < 50) {
+    return false;
+  }
+
+  // Require at least a few actual words.
+  const words = normalized.split(/\s+/).filter(Boolean);
+
+  return words.length >= 10;
+}
+
 /**
  * Single entry point for text extraction. The rest of the app only needs
  * to know "pdf" vs "image" — it never has to care whether that resolves to
@@ -46,7 +68,7 @@ export async function extractDocumentText(
 if (sourceType === "pdf") {
   const { text, pageCount } = await extractPdfText(buffer);
 
-  if (text) {
+  if (hasMeaningfulText(text)) {
     return {
       text,
       pageCount,
