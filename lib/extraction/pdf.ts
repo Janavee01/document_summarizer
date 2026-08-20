@@ -5,11 +5,6 @@ export type PdfPageExtraction = {
   text: string;
 };
 
-export type PdfPageImage = {
-  pageNumber: number;
-  image: Buffer;
-};
-
 export type PdfExtractionResult = {
   text: string;
   pageCount: number;

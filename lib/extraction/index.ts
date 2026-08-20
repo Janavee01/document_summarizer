@@ -1,8 +1,25 @@
-import { extractPdfText } from "./pdf";
-import { extractImageText } from "./ocr";
-import { extractPdfOcrText } from "./pdf-ocr";
+import {
+  extractPdfText,
+  renderPdfPage,
+} from "./pdf";
 
-export type ExtractionMethod = "pdf" | "ocr";
+import {
+  createOcrWorker,
+  extractImageText,
+  recognizeWithWorker,
+} from "./ocr";
+
+export type ExtractionMethod = "pdf" | "ocr" | "hybrid";
+
+export type ExtractionSourceType = "pdf" | "image";
+
+export type PageExtractionMethod = "pdf" | "ocr";
+
+export type PageExtractionResult = {
+  pageNumber: number;
+  text: string;
+  method: PageExtractionMethod;
+};
 
 export type ExtractionResult = {
   text: string;
@@ -10,15 +27,11 @@ export type ExtractionResult = {
   wordCount: number;
   characterCount: number;
   method: ExtractionMethod;
+  pages?: PageExtractionResult[];
 };
 
-export type ExtractionSourceType = "pdf" | "image";
-
 /**
- * Thrown when extraction technically "succeeded" but produced no usable
- * text (e.g. a scanned PDF with no text layer). Kept distinct from generic
- * failures so the API route/UI can show a specific, honest message instead
- * of reporting success with an empty document.
+ * Thrown when extraction technically succeeded but produced no usable text.
  */
 export class EmptyExtractionError extends Error {
   constructor(message: string) {
@@ -29,86 +42,165 @@ export class EmptyExtractionError extends Error {
 
 function countWords(text: string): number {
   const trimmed = text.trim();
-  if (!trimmed) return 0;
+
+  if (!trimmed) {
+    return 0;
+  }
+
   return trimmed.split(/\s+/).length;
 }
 
-function hasMeaningfulText(text: string): boolean {
-  const normalized = text
-    .replace(/--\s*\d+\s+of\s+\d+\s+--/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+function createExtractionResult(
+  text: string,
+  method: ExtractionMethod,
+  pageCount?: number,
+  pages?: PageExtractionResult[],
+): ExtractionResult {
+  const normalizedText = text.trim();
 
-  if (!normalized) {
-    return false;
-  }
-
-  // Very small amounts of extracted text are often PDF artifacts,
-  // page labels, or metadata rather than actual document content.
-  if (normalized.length < 50) {
-    return false;
-  }
-
-  // Require at least a few actual words.
-  const words = normalized.split(/\s+/).filter(Boolean);
-
-  return words.length >= 10;
+  return {
+    text: normalizedText,
+    pageCount,
+    wordCount: countWords(normalizedText),
+    characterCount: normalizedText.length,
+    method,
+    pages,
+  };
 }
 
 /**
- * Single entry point for text extraction. The rest of the app only needs
- * to know "pdf" vs "image" — it never has to care whether that resolves to
- * pdf-parse or Tesseract.js under the hood.
+ * Determines whether a PDF page contains enough extracted text
+ * to be considered a text-based page.
+ *
+ * Very small amounts of text can come from metadata, page numbers,
+ * headers, or other non-content elements, so we use a small threshold
+ * instead of checking only for an empty string.
  */
-export async function extractDocumentText(
+function hasMeaningfulText(text: string): boolean {
+  const normalizedText = text.trim();
+
+  return normalizedText.length >= 20;
+}
+
+/**
+ * Extracts a PDF using a hybrid PDF-text/OCR strategy.
+ *
+ * Text-based pages use the native PDF text layer.
+ * Pages without meaningful text are rendered to images and OCRed.
+ */
+async function extractHybridPdf(
   buffer: Buffer,
-  sourceType: ExtractionSourceType
 ): Promise<ExtractionResult> {
+  const pdfResult = await extractPdfText(buffer);
 
-if (sourceType === "pdf") {
-  const { text, pageCount } = await extractPdfText(buffer);
+  const requiresOcr = pdfResult.pages.some(
+    (page) => !hasMeaningfulText(page.text),
+  );
 
-  if (hasMeaningfulText(text)) {
-    return {
-      text,
-      pageCount,
-      wordCount: countWords(text),
-      characterCount: text.length,
-      method: "pdf",
-    };
-  }
-
-  // No selectable text means this is likely a scanned/image-based PDF.
-  // Fall back to rendering each page and running OCR.
-  const ocrResult = await extractPdfOcrText(buffer);
-
-  if (!ocrResult.text) {
-    throw new EmptyExtractionError(
-      "No text could be detected in this PDF. It may contain blank pages, very low-quality scans, or unsupported content.",
+  if (!requiresOcr) {
+    return createExtractionResult(
+      pdfResult.text,
+      "pdf",
+      pdfResult.pageCount,
+      pdfResult.pages.map((page) => ({
+        pageNumber: page.pageNumber,
+        text: page.text,
+        method: "pdf",
+      })),
     );
   }
 
-  return {
-    text: ocrResult.text,
-    pageCount: ocrResult.pageCount,
-    wordCount: countWords(ocrResult.text),
-    characterCount: ocrResult.text.length,
-    method: "ocr",
-  };
+  const ocrWorker = await createOcrWorker();
+
+  try {
+    const extractedPages: PageExtractionResult[] = [];
+
+    for (const page of pdfResult.pages) {
+      if (hasMeaningfulText(page.text)) {
+        extractedPages.push({
+          pageNumber: page.pageNumber,
+          text: page.text,
+          method: "pdf",
+        });
+
+        continue;
+      }
+
+      const pageImage = await renderPdfPage(
+        buffer,
+        page.pageNumber,
+      );
+
+      const ocrResult = await recognizeWithWorker(
+        ocrWorker,
+        pageImage,
+      );
+
+      extractedPages.push({
+        pageNumber: page.pageNumber,
+        text: ocrResult.text,
+        method: "ocr",
+      });
+    }
+
+    const combinedText = extractedPages
+      .map((page) => page.text)
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
+
+    if (!combinedText) {
+      throw new EmptyExtractionError(
+        "No text could be extracted from this PDF. It may contain images that OCR could not read.",
+      );
+    }
+
+    const hasPdfPages = extractedPages.some(
+      (page) => page.method === "pdf",
+    );
+
+    const hasOcrPages = extractedPages.some(
+      (page) => page.method === "ocr",
+    );
+
+    let method: ExtractionMethod = "hybrid";
+
+    if (!hasPdfPages && hasOcrPages) {
+      method = "ocr";
+    }
+
+    return createExtractionResult(
+      combinedText,
+      method,
+      pdfResult.pageCount,
+      extractedPages,
+    );
+  } finally {
+    await ocrWorker.terminate();
+  }
 }
+
+/**
+ * Unified document extraction service.
+ *
+ * Images use OCR directly.
+ * PDFs use native PDF extraction with OCR fallback for scanned pages.
+ */
+export async function extractDocumentText(
+  buffer: Buffer,
+  sourceType: ExtractionSourceType,
+): Promise<ExtractionResult> {
+  if (sourceType === "pdf") {
+    return extractHybridPdf(buffer);
+  }
 
   const { text } = await extractImageText(buffer);
 
   if (!text) {
     throw new EmptyExtractionError(
-      "No text could be detected in this image. Try a clearer photo or a higher-resolution scan."
+      "No text could be detected in this image. Try a clearer photo or a higher-resolution scan.",
     );
   }
 
-  return {
-    text,
-    wordCount: countWords(text),
-    characterCount: text.length,
-    method: "ocr",
-  };
+  return createExtractionResult(text, "ocr");
 }
