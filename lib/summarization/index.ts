@@ -1,15 +1,17 @@
 import type { Summary, SummaryLength } from "@/types/summary";
+
+import { callOpenRouter } from "./openrouter";
 import { chunkText } from "./chunking";
-// Keep the request comfortably inside the model's context window and cap
-// cost/latency. Very long documents are truncated with a note appended to
-// the prompt so the model knows the input was cut down.
-const MAX_INPUT_CHARACTERS = 60_000;
 
 const LENGTH_GUIDANCE: Record<SummaryLength, string> = {
-  short: "2-3 sentences (roughly 40-70 words). Capture only the core takeaway.",
+  short:
+    "2-3 sentences (roughly 40-70 words). Capture only the core takeaway.",
+
   medium:
     "1-2 short paragraphs (roughly 120-200 words). Cover the main narrative and the most important supporting details.",
-  long: "3-5 paragraphs (roughly 300-450 words). Be thorough — cover the main narrative, supporting details, and context a reader would need without re-reading the source.",
+
+  long:
+    "3-5 paragraphs (roughly 300-450 words). Be thorough — cover the main narrative, supporting details, and context a reader would need without re-reading the source.",
 };
 
 export class SummarizationConfigError extends Error {
@@ -26,34 +28,68 @@ export class SummarizationRequestError extends Error {
   }
 }
 
-function truncateText(text: string): { text: string; truncated: boolean } {
-  const trimmed = text.trim();
+function buildChunkPrompt(
+  text: string,
+  chunkNumber: number,
+  totalChunks: number
+): string {
+  return `You are analyzing part ${chunkNumber} of ${totalChunks} of a larger document.
 
-  if (trimmed.length <= MAX_INPUT_CHARACTERS) {
-    return { text: trimmed, truncated: false };
-  }
+Summarize this section accurately.
 
-  return { text: trimmed.slice(0, MAX_INPUT_CHARACTERS), truncated: true };
+Extract:
+
+- important facts and findings
+- important arguments or ideas
+- notable people, organizations, products, dates, or figures
+- concrete actions, decisions, or requirements
+
+Do not invent information.
+
+Preserve important technical terminology.
+
+Focus only on information present in this section.
+
+Return a concise structured summary that can later be combined with summaries from the other sections.
+
+Section ${chunkNumber}:
+
+"""
+${text}
+"""`;
 }
 
-function buildPrompt(text: string, length: SummaryLength, truncated: boolean): string {
-  const truncationNote = truncated
-    ? "\n\nNote: the document was too long to include in full — you are working from its opening portion only. Do not mention this limitation in the summary itself."
-    : "";
+async function summarizeChunk(
+  text: string,
+  chunkNumber: number,
+  totalChunks: number
+): Promise<string> {
+  const prompt = buildChunkPrompt(
+    text,
+    chunkNumber,
+    totalChunks
+  );
 
-  return `You are an assistant that reads documents and produces accurate, well-structured summaries.
+  return callOpenRouter(prompt, {
+  maxTokens: 1200
+});
+}
 
-Summarize the document below. Length requirement for the "summary" field: ${LENGTH_GUIDANCE[length]}
+function buildFinalPrompt(
+  summaries: string[],
+  length: SummaryLength
+): string {
+  return `You are producing the final summary of a document.
 
-Also extract:
-- keyPoints: the essential facts, findings, or takeaways a reader must not miss (3-6 short bullet-style strings).
-- mainIdeas: the high-level themes or arguments the document is organized around (2-5 short strings).
-- entities: notable people, organizations, products, dates, or figures mentioned (up to 8 strings; omit if none are relevant).
-- actionItems: concrete next steps, decisions, or to-dos implied by the document (omit / empty array if none exist).
-- documentType: a short label for what kind of document this is (e.g. "Meeting notes", "Research paper", "Invoice", "Contract").
-- title: a concise descriptive title for the document (a few words), inferred from its content.
+You are given summaries of all sections of the document.
 
-Respond with ONLY a single JSON object, no markdown fences, no preamble, matching exactly this shape:
+Combine them into one accurate final representation.
+
+Length requirement for the "summary" field:
+${LENGTH_GUIDANCE[length]}
+
+Return a single JSON object with exactly these fields:
+
 {
   "title": string,
   "documentType": string,
@@ -64,10 +100,28 @@ Respond with ONLY a single JSON object, no markdown fences, no preamble, matchin
   "actionItems": string[]
 }
 
-Document:
-"""
-${text}
-"""${truncationNote}`;
+Requirements:
+
+- title: concise descriptive title.
+- documentType: short document classification.
+- summary: follow the requested length.
+- keyPoints: 3-6 essential facts or takeaways.
+- mainIdeas: 2-5 high-level themes or arguments.
+- entities: up to 8 notable people, organizations, products, dates, or figures.
+- actionItems: concrete next steps, decisions, or to-dos. Use an empty array if none exist.
+- Do not invent information.
+- Remove duplication between sections.
+- Combine information across sections when necessary.
+- Base the final answer only on the provided section summaries.
+
+Section summaries:
+
+${summaries
+  .map(
+    (summary, index) =>
+      `--- Section ${index + 1} ---\n${summary}`
+  )
+  .join("\n\n")}`;
 }
 
 function extractJson(raw: string): unknown {
@@ -80,12 +134,16 @@ function extractJson(raw: string): unknown {
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Fall back to grabbing the first {...} block in case the model added
-    // any stray text around the JSON despite instructions.
     const match = cleaned.match(/\{[\s\S]*\}/);
+
     if (match) {
-      return JSON.parse(match[0]);
+      try {
+        return JSON.parse(match[0]);
+      } catch {
+        // Fall through to the standard error below.
+      }
     }
+
     throw new SummarizationRequestError(
       "The summarizer returned a response that couldn't be parsed."
     );
@@ -94,33 +152,59 @@ function extractJson(raw: string): unknown {
 
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+
+  return value.filter(
+    (item): item is string =>
+      typeof item === "string" && item.trim().length > 0
+  );
 }
 
 function normalizeSummary(parsed: unknown): Summary {
   if (typeof parsed !== "object" || parsed === null) {
-    throw new SummarizationRequestError("The summarizer returned an unexpected response shape.");
+    throw new SummarizationRequestError(
+      "The summarizer returned an unexpected response shape."
+    );
   }
 
   const data = parsed as Record<string, unknown>;
 
-  const summary = typeof data.summary === "string" ? data.summary.trim() : "";
+  const summary =
+    typeof data.summary === "string"
+      ? data.summary.trim()
+      : "";
+
   if (!summary) {
-    throw new SummarizationRequestError("The summarizer did not return any summary text.");
+    throw new SummarizationRequestError(
+      "The summarizer did not return any summary text."
+    );
   }
 
   return {
-    title: typeof data.title === "string" && data.title.trim() ? data.title.trim() : "Untitled document",
+    title:
+      typeof data.title === "string" &&
+      data.title.trim()
+        ? data.title.trim()
+        : "Untitled document",
+
     documentType:
-      typeof data.documentType === "string" && data.documentType.trim()
+      typeof data.documentType === "string" &&
+      data.documentType.trim()
         ? data.documentType.trim()
         : "Document",
+
     summary,
+
     keyPoints: toStringArray(data.keyPoints),
+
     mainIdeas: toStringArray(data.mainIdeas),
+
     entities: toStringArray(data.entities),
+
     actionItems: toStringArray(data.actionItems),
-    improvementSuggestions: toStringArray(data.improvementSuggestions),
+
+    improvementSuggestions: toStringArray(
+      data.improvementSuggestions
+    ),
   };
 }
 
@@ -128,88 +212,116 @@ export async function generateSummary(
   documentText: string,
   length: SummaryLength
 ): Promise<Summary> {
-  const apiKey = process.env.AI_API_KEY;
-
-  if (!apiKey) {
-    throw new SummarizationConfigError(
-      "AI_API_KEY is not configured on the server. Add a free OpenRouter API key to your environment to enable summarization."
-    );
-  }
-
   const trimmedInput = documentText.trim();
+
   if (!trimmedInput) {
-    throw new SummarizationRequestError("There is no extracted text to summarize.");
+    throw new SummarizationRequestError(
+      "There is no extracted text to summarize."
+    );
   }
 
   const chunks = chunkText(trimmedInput);
 
-console.log("========== CHUNKING TEST ==========");
-console.log("Original characters:", trimmedInput.length);
-console.log("Number of chunks:", chunks.length);
-console.log(
-  "Total characters across chunks:",
-  chunks.reduce((total, chunk) => total + chunk.text.length, 0)
-);
-console.log(
-  "Chunk sizes:",
-  chunks.map((chunk) => chunk.text.length)
-);
-console.log("====================================");
+  console.log(
+    "========== CHUNKED SUMMARIZATION =========="
+  );
 
-  const { text, truncated } = truncateText(trimmedInput);
-  console.log("========== SUMMARIZATION INPUT ==========");
-  console.log("Original characters:", trimmedInput.length);
-  console.log("Characters sent to model:", text.length);
-  console.log("Was truncated:", truncated);
-  console.log("==========================================");
-  const prompt = buildPrompt(text, length, truncated);
+  console.log(
+    "Original characters:",
+    trimmedInput.length
+  );
 
-  // OpenRouter's free tier (":free" model suffix) carries no per-token
-  // cost — only an API key is required, which is free to create.
-  let response: Response;
+  console.log(
+    "Number of chunks:",
+    chunks.length
+  );
+
+  console.log(
+    "Total characters across chunks:",
+    chunks.reduce(
+      (total, chunk) => total + chunk.text.length,
+      0
+    )
+  );
+
+  console.log(
+    "Chunk sizes:",
+    chunks.map((chunk) => chunk.text.length)
+  );
+
+  console.log(
+    "============================================"
+  );
+
   try {
-    response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "nvidia/nemotron-3-super-120b-a12b:free",
-        max_tokens: 1500,
-        temperature: 0.2,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-  } catch {
-    throw new SummarizationRequestError(
-      "Could not reach the summarization service. Check your connection and try again."
+    /*
+     * Step 1:
+     * Summarize every chunk in parallel.
+     */
+    const chunkSummaries = await Promise.all(
+      chunks.map((chunk) =>
+        summarizeChunk(
+          chunk.text,
+          chunk.index + 1,
+          chunks.length
+        )
+      )
     );
-  }
 
-  if (!response.ok) {
-    let detail = "";
-    try {
-      const errBody = await response.json();
-      detail = errBody?.error?.message ?? "";
-    } catch {
-      // ignore body parse failures
+    console.log(
+      "========== CHUNK SUMMARIES COMPLETE =========="
+    );
+
+    console.log(
+      "Generated summaries:",
+      chunkSummaries.length
+    );
+
+    console.log(
+      "==============================================="
+    );
+
+    /*
+     * Step 2:
+     * Give all intermediate summaries to the model
+     * and ask it to produce the final structured result.
+     */
+    const finalPrompt = buildFinalPrompt(
+      chunkSummaries,
+      length
+    );
+
+   const rawText = await callOpenRouter(finalPrompt, {
+  maxTokens: 3000,
+  jsonMode: true,
+});
+
+    console.log(
+      "========== FINAL MODEL RESPONSE =========="
+    );
+
+    console.log(rawText);
+
+    console.log(
+      "=========================================="
+    );
+
+    /*
+     * Step 3:
+     * Parse and validate the final JSON.
+     */
+    const parsed = extractJson(rawText);
+
+    return normalizeSummary(parsed);
+  } catch (error) {
+    if (error instanceof SummarizationRequestError) {
+      throw error;
     }
 
     throw new SummarizationRequestError(
-      detail
-        ? `Summarization service error: ${detail}`
-        : `Summarization service returned an error (status ${response.status}).`
+      error instanceof Error
+        ? error.message
+        : "Failed to summarize the document."
     );
   }
-
-  const payload = await response.json();
-  const rawText: string = payload?.choices?.[0]?.message?.content ?? "";
-
-  if (!rawText.trim()) {
-    throw new SummarizationRequestError("The summarizer returned an empty response.");
-  }
-
-  const parsed = extractJson(rawText);
-  return normalizeSummary(parsed);
 }

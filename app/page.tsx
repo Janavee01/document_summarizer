@@ -17,6 +17,7 @@ import {
 } from "@/lib/file-validation";
 import type { ExtractionResult } from "@/lib/extraction";
 import { DocumentReader } from "@/components/upload/document-reader";
+import { SummaryPanel } from "@/components/summary/summary-panel";
 
 type ExtractionStatus = "idle" | "processing" | "success" | "error";
 
@@ -328,7 +329,10 @@ export default function Home() {
         )}
 
         {extractionStatus === "success" && extractionResult && (
-          <DocumentReader result={extractionResult} />
+          <>
+            <DocumentReader result={extractionResult} />
+            <SummaryPanel text={extractionResult.text} />
+          </>
         )}
       </section>
     </main>
