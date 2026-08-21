@@ -1,21 +1,20 @@
 import { PDFParse } from "pdf-parse";
 
-export type PdfPageExtraction = {
+export type PdfPageExtractionResult = {
   pageNumber: number;
   text: string;
 };
 
 export type PdfExtractionResult = {
-  text: string;
+  pages: PdfPageExtractionResult[];
   pageCount: number;
-  pages: PdfPageExtraction[];
 };
 
 /**
- * Extracts text from every page of a PDF.
+ * Extracts native text from every PDF page.
  *
- * Text is kept separately per page so the hybrid extraction pipeline
- * can identify pages that need OCR.
+ * This function intentionally does not perform OCR.
+ * OCR decisions belong to the hybrid extraction pipeline.
  */
 export async function extractPdfText(
   buffer: Buffer,
@@ -25,23 +24,16 @@ export async function extractPdfText(
   });
 
   try {
-    const result = await parser.getText();
-
-    const pages = result.pages.map((page) => ({
-      pageNumber: page.num,
-      text: page.text.trim(),
-    }));
-
-    const text = pages
-      .map((page) => page.text)
-      .filter(Boolean)
-      .join("\n\n")
-      .trim();
+    const result = await parser.getText({
+      pageJoiner: "",
+    });
 
     return {
-      text,
+      pages: result.pages.map((page) => ({
+        pageNumber: page.num,
+        text: page.text.trim(),
+      })),
       pageCount: result.total,
-      pages,
     };
   } finally {
     await parser.destroy();
@@ -49,9 +41,10 @@ export async function extractPdfText(
 }
 
 /**
- * Renders one PDF page as a PNG image.
+ * Renders one PDF page into a PNG image.
  *
- * The resulting image can be passed directly to Tesseract.js for OCR.
+ * The rendered image is used by the OCR pipeline when native
+ * PDF text extraction is missing or suspicious.
  */
 export async function renderPdfPage(
   buffer: Buffer,
@@ -64,16 +57,16 @@ export async function renderPdfPage(
   try {
     const result = await parser.getScreenshot({
       partial: [pageNumber],
-      desiredWidth: 1600,
       imageBuffer: true,
       imageDataUrl: false,
+      scale: 1.5,
     });
 
     const page = result.pages[0];
 
-    if (!page?.data) {
+    if (!page) {
       throw new Error(
-        `Could not render PDF page ${pageNumber} as an image.`,
+        `Could not render PDF page ${pageNumber}.`,
       );
     }
 

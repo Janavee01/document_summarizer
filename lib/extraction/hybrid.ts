@@ -1,6 +1,8 @@
 import { PDFParse } from "pdf-parse";
 import { createWorker } from "tesseract.js";
+
 import { extractPdfPageTexts } from "./pdf-pages";
+import { analyzeTextQuality } from "./text-quality";
 
 export type HybridPageResult = {
   pageNumber: number;
@@ -14,20 +16,45 @@ export type HybridExtractionResult = {
   pages: HybridPageResult[];
 };
 
-function hasMeaningfulPageText(text: string): boolean {
-  const normalized = text.replace(/\s+/g, " ").trim();
+function formatPageText(
+  pageNumber: number,
+  pageCount: number,
+  text: string,
+): string {
+  const trimmedText = text.trim();
 
-  if (!normalized) {
-    return false;
+  if (!trimmedText) {
+    return "";
   }
 
-  if (normalized.length < 50) {
-    return false;
-  }
+  return `-- ${pageNumber} of ${pageCount} --\n${trimmedText}`;
+}
 
-  const words = normalized.split(/\s+/).filter(Boolean);
+function combinePages(
+  pages: HybridPageResult[],
+  pageCount: number,
+): string {
+  return pages
+    .map((page) =>
+      formatPageText(
+        page.pageNumber,
+        pageCount,
+        page.text,
+      ),
+    )
+    .filter(Boolean)
+    .join("\n\n");
+}
 
-  return words.length >= 10;
+function logSuspiciousPage(
+  pageNumber: number,
+  quality: ReturnType<typeof analyzeTextQuality>,
+): void {
+  console.log(
+    `Page ${pageNumber}: native PDF text is suspicious. ` +
+      `Score: ${quality.qualityScore.toFixed(2)}. ` +
+      `Reasons: ${quality.reasons.join("; ")}`,
+  );
 }
 
 export async function extractHybridPdfText(
@@ -35,26 +62,55 @@ export async function extractHybridPdfText(
 ): Promise<HybridExtractionResult> {
   const pageTextResult = await extractPdfPageTexts(buffer);
 
-  const pagesNeedingOcr = pageTextResult.pages
-    .filter((page) => !hasMeaningfulPageText(page.text))
-    .map((page) => page.pageNumber);
+  /*
+   * Analyze every page independently.
+   *
+   * Native PDF extraction is preferred when the extracted text
+   * has sufficient evidence of being readable. OCR is restricted
+   * to pages whose multi-signal quality score is suspicious.
+   */
+  const pageQualities = pageTextResult.pages.map((page) => ({
+    page,
+    quality: analyzeTextQuality(page.text),
+  }));
 
+  const pagesNeedingOcr = pageQualities
+    .filter(({ quality }) => quality.isSuspicious)
+    .map(({ page }) => page.pageNumber);
+
+  for (const { page, quality } of pageQualities) {
+    if (quality.isSuspicious) {
+      logSuspiciousPage(page.pageNumber, quality);
+    }
+  }
+
+  /*
+   * Fast path:
+   * If all pages have trustworthy native text, avoid rendering
+   * and OCR entirely.
+   */
   if (pagesNeedingOcr.length === 0) {
-    return {
-      text: pageTextResult.pages
-        .map(
-          (page) =>
-            `-- ${page.pageNumber} of ${pageTextResult.pageCount} --\n${page.text}`,
-        )
-        .join("\n\n"),
-      pageCount: pageTextResult.pageCount,
-      pages: pageTextResult.pages.map((page) => ({
+    const pages: HybridPageResult[] =
+      pageTextResult.pages.map((page) => ({
         pageNumber: page.pageNumber,
         text: page.text,
         method: "pdf",
-      })),
+      }));
+
+    return {
+      text: combinePages(
+        pages,
+        pageTextResult.pageCount,
+      ),
+      pageCount: pageTextResult.pageCount,
+      pages,
     };
   }
+
+  console.log(
+    `OCR required for ${pagesNeedingOcr.length} ` +
+      `of ${pageTextResult.pageCount} page(s).`,
+  );
 
   const parser = new PDFParse({
     data: buffer,
@@ -63,6 +119,9 @@ export async function extractHybridPdfText(
   const worker = await createWorker("eng");
 
   try {
+    /*
+     * Render only suspicious pages.
+     */
     const screenshots = await parser.getScreenshot({
       partial: pagesNeedingOcr,
       imageBuffer: true,
@@ -73,39 +132,49 @@ export async function extractHybridPdfText(
     const ocrByPage = new Map<number, string>();
 
     for (const page of screenshots.pages) {
+      console.log(
+        `Page ${page.pageNumber}: running OCR...`,
+      );
+
       const {
         data: { text },
-      } = await worker.recognize(Buffer.from(page.data));
+      } = await worker.recognize(
+        Buffer.from(page.data),
+      );
 
-      ocrByPage.set(page.pageNumber, (text ?? "").trim());
+      ocrByPage.set(
+        page.pageNumber,
+        (text ?? "").trim(),
+      );
     }
 
-    const pages: HybridPageResult[] = pageTextResult.pages.map((page) => {
-      if (hasMeaningfulPageText(page.text)) {
+    const pages: HybridPageResult[] =
+      pageTextResult.pages.map((page) => {
+        const quality = pageQualities.find(
+          (entry) =>
+            entry.page.pageNumber === page.pageNumber,
+        );
+
+        if (!quality?.quality.isSuspicious) {
+          return {
+            pageNumber: page.pageNumber,
+            text: page.text,
+            method: "pdf",
+          };
+        }
+
         return {
           pageNumber: page.pageNumber,
-          text: page.text,
-          method: "pdf",
+          text: ocrByPage.get(page.pageNumber) ?? "",
+          method: "ocr",
         };
-      }
-
-      return {
-        pageNumber: page.pageNumber,
-        text: ocrByPage.get(page.pageNumber) ?? "",
-        method: "ocr",
-      };
-    });
-
-    const text = pages
-      .filter((page) => page.text)
-      .map(
-        (page) =>
-          `-- ${page.pageNumber} of ${pageTextResult.pageCount} --\n${page.text}`,
-      )
-      .join("\n\n");
+      });
 
     return {
-      text,
+      text: combinePages(
+        pages,
+        pageTextResult.pageCount,
+      ),
       pageCount: pageTextResult.pageCount,
       pages,
     };
