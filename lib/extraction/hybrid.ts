@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse";
 import { createWorker } from "tesseract.js";
-
+import { normalizeExtractedText } from "./text-normalization";
 import { extractPdfPageTexts } from "./pdf-pages";
 import { analyzeTextQuality } from "./text-quality";
 
@@ -144,7 +144,7 @@ export async function extractHybridPdfText(
 
       ocrByPage.set(
         page.pageNumber,
-        (text ?? "").trim(),
+        normalizeExtractedText(text ?? ""),
       );
     }
 

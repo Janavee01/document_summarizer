@@ -1,4 +1,5 @@
 import { PDFParse } from "pdf-parse";
+import { normalizeExtractedText } from "./text-normalization";
 
 export type PdfPageText = {
   pageNumber: number;
@@ -25,7 +26,7 @@ export async function extractPdfPageTexts(
     return {
       pages: result.pages.map((page) => ({
         pageNumber: page.num,
-        text: page.text.trim(),
+        text: normalizeExtractedText(page.text),
       })),
       pageCount: result.total,
     };

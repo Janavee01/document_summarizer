@@ -1,23 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
-  CheckCircle2,
-  Lightbulb,
-  ListChecks,
+  Check,
+  Copy,
+  Link2,
   Loader2,
   Sparkles,
-  Tag,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildShareLink, copyTextToClipboard } from "@/lib/share";
 import type { Summary, SummaryLength } from "@/types/summary";
+import { SummaryView } from "@/components/summary/summary-view";
 
 interface SummaryPanelProps {
   text: string;
 }
 
 type SummaryStatus = "idle" | "loading" | "success" | "error";
+type CopyStatus = "idle" | "copied";
 
 const LENGTH_OPTIONS: { value: SummaryLength; label: string }[] = [
   { value: "short", label: "Short" },
@@ -30,6 +33,17 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
   const [status, setStatus] = useState<SummaryStatus>("idle");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const generateSummary = async (requestedLength: SummaryLength) => {
     if (status === "loading") return;
@@ -47,6 +61,7 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.success) {
+        setShareUrl(null);
         setStatus("error");
         setErrorMessage(
           payload?.error?.message ??
@@ -56,8 +71,10 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
       }
 
       setSummary(payload.data as Summary);
+      setShareUrl(null);
       setStatus("success");
     } catch {
+      setShareUrl(null);
       setStatus("error");
       setErrorMessage(
         "Something went wrong while generating the summary. Check your connection and try again."
@@ -72,6 +89,29 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
     if (status === "success" || status === "error") {
       generateSummary(newLength);
     }
+  };
+
+  const handleGenerateLink = () => {
+    if (!summary) return;
+    // window is only touched inside this handler so SSR stays safe.
+    setShareUrl(buildShareLink(summary, window.location.origin));
+    setCopyStatus("idle");
+  };
+
+  const handleCopy = async () => {
+    if (!shareUrl) return;
+
+    const copied = await copyTextToClipboard(shareUrl);
+    if (!copied) return;
+
+    setCopyStatus("copied");
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = window.setTimeout(() => {
+      setCopyStatus("idle");
+      copyTimerRef.current = null;
+    }, 2000);
   };
 
   return (
@@ -158,105 +198,83 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
         )}
 
         {status === "success" && summary && (
-          <div className="space-y-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-zinc-900">
-                  {summary.title}
-                </p>
-                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                  <Tag aria-hidden="true" className="h-3 w-3" />
-                  {summary.documentType}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => generateSummary(length)}
-                className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
-              >
-                Regenerate
-              </button>
-            </div>
-
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-800">
-              {summary.summary}
-            </p>
-
-            {summary.keyPoints.length > 0 && (
-              <SummarySection
-                icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
-                title="Key points"
-                items={summary.keyPoints}
-              />
-            )}
-
-            {summary.mainIdeas.length > 0 && (
-              <SummarySection
-                icon={<Lightbulb aria-hidden="true" className="h-4 w-4" />}
-                title="Main ideas"
-                items={summary.mainIdeas}
-              />
-            )}
-
-            {summary.actionItems.length > 0 && (
-              <SummarySection
-                icon={<ListChecks aria-hidden="true" className="h-4 w-4" />}
-                title="Action items"
-                items={summary.actionItems}
-              />
-            )}
-
-            {summary.entities.length > 0 && (
-              <div>
-                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-                  <Tag aria-hidden="true" className="h-3.5 w-3.5" />
-                  Mentioned
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {summary.entities.map((entity) => (
-                    <span
-                      key={entity}
-                      className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs text-zinc-700"
-                    >
-                      {entity}
-                    </span>
-                  ))}
+          <SummaryView
+            summary={summary}
+            headerAction={
+              <>
+                <button
+                  type="button"
+                  onClick={handleGenerateLink}
+                  aria-expanded={shareUrl !== null}
+                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                >
+                  Share
+                </button>
+                <button
+                  type="button"
+                  onClick={() => generateSummary(length)}
+                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                >
+                  Regenerate
+                </button>
+              </>
+            }
+          >
+            {shareUrl && (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={shareUrl}
+                    onFocus={(event) => event.target.select()}
+                    aria-label="Shareable summary link"
+                    className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2",
+                      copyStatus === "copied"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-zinc-900 text-white hover:bg-zinc-800"
+                    )}
+                  >
+                    {copyStatus === "copied" ? (
+                      <>
+                        <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+                        Copy link
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShareUrl(null)}
+                    aria-label="Hide share link"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  </button>
                 </div>
+                <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-zinc-500">
+                  <Link2
+                    aria-hidden="true"
+                    className="mt-0.5 h-3 w-3 shrink-0"
+                  />
+                  Anyone with this link can view this summary — only the
+                  summary is shared, never your document.
+                </p>
               </div>
             )}
-          </div>
+          </SummaryView>
         )}
       </div>
-    </div>
-  );
-}
-
-function SummarySection({
-  icon,
-  title,
-  items,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  items: string[];
-}) {
-  return (
-    <div>
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-        {icon}
-        {title}
-      </p>
-      <ul className="space-y-1.5">
-        {items.map((item) => (
-          <li
-            key={item}
-            className="flex items-start gap-2 text-sm leading-relaxed text-zinc-800"
-          >
-            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-zinc-400" />
-            {item}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
