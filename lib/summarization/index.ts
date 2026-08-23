@@ -50,7 +50,13 @@ Preserve important technical terminology.
 
 Focus only on information present in this section.
 
-Return a concise structured summary that can later be combined with summaries from the other sections.
+Return a highly concise section summary for a later aggregation step.
+
+Keep only information that is essential for understanding the document.
+Avoid repeating explanations.
+Do not write a full prose summary.
+
+Target approximately 250-400 words.
 
 Section ${chunkNumber}:
 
@@ -71,83 +77,135 @@ async function summarizeChunk(
   );
 
   return callOpenRouter(prompt, {
-  maxTokens: 1200
-});
+    maxTokens: 700
+  });
 }
 
 function buildFinalPrompt(
   summaries: string[],
   length: SummaryLength
 ): string {
-  return `You are producing the final summary of a document.
+  return `Create the final structured summary of the document using ONLY the section summaries provided below.
 
-You are given summaries of all sections of the document.
+The section summaries represent different parts of the same document. Combine them carefully and remove duplication.
 
-Combine them into one accurate final representation.
-
-Length requirement for the "summary" field:
+Summary length:
 ${LENGTH_GUIDANCE[length]}
 
-Return a single JSON object with exactly these fields:
+Return exactly one JSON object with this structure:
 
 {
-  "title": string,
-  "documentType": string,
-  "summary": string,
-  "keyPoints": string[],
-  "mainIdeas": string[],
-  "entities": string[],
-  "actionItems": string[]
+  "title": "string",
+  "documentType": "string",
+  "summary": "string",
+  "keyPoints": ["string"],
+  "mainIdeas": ["string"],
+  "entities": ["string"],
+  "actionItems": ["string"]
 }
 
-Requirements:
+Field requirements:
 
 - title: concise descriptive title.
-- documentType: short document classification.
+- documentType: short classification of the document.
 - summary: follow the requested length.
 - keyPoints: 3-6 essential facts or takeaways.
 - mainIdeas: 2-5 high-level themes or arguments.
 - entities: up to 8 notable people, organizations, products, dates, or figures.
-- actionItems: concrete next steps, decisions, or to-dos. Use an empty array if none exist.
+- actionItems: concrete actions, decisions, requirements, or to-dos explicitly supported by the document. Use [] if there are none.
 - Do not invent information.
-- Remove duplication between sections.
-- Combine information across sections when necessary.
-- Base the final answer only on the provided section summaries.
+- Use only information supported by the section summaries.
+- Combine related information across sections.
+- Remove repeated information.
+
+Important:
+- Return one JSON object only.
+- Do not use markdown.
+- Do not use code fences.
+- Do not include explanations or reasoning.
+- Do not include any text before or after the JSON object.
 
 Section summaries:
 
 ${summaries
   .map(
     (summary, index) =>
-      `--- Section ${index + 1} ---\n${summary}`
+      `--- Section ${index + 1} ---
+${summary}`
   )
-  .join("\n\n")}`;
+  .join("\n\n")}
+`;
 }
 
 function extractJson(raw: string): unknown {
   const cleaned = raw
     .trim()
     .replace(/^```(?:json)?/i, "")
-    .replace(/```$/, "")
+    .replace(/```$/i, "")
     .trim();
 
+  // First: try the complete response directly.
   try {
     return JSON.parse(cleaned);
   } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
+    // Continue with fallback extraction.
+  }
 
-    if (match) {
-      try {
-        return JSON.parse(match[0]);
-      } catch {
-        // Fall through to the standard error below.
-      }
-    }
+  // Second: find the first complete JSON object.
+  const start = cleaned.indexOf("{");
 
+  if (start === -1) {
     throw new SummarizationRequestError(
       "The summarizer returned a response that couldn't be parsed."
     );
   }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === "{") {
+      depth++;
+    } else if (char === "}") {
+      depth--;
+
+      if (depth === 0) {
+        const candidate = cleaned.slice(start, i + 1);
+
+        try {
+          return JSON.parse(candidate);
+        } catch {
+          break;
+        }
+      }
+    }
+  }
+
+  throw new SummarizationRequestError(
+    "The summarizer returned a response that couldn't be parsed."
+  );
 }
 
 function toStringArray(value: unknown): string[] {
@@ -291,10 +349,23 @@ export async function generateSummary(
       length
     );
 
-   const rawText = await callOpenRouter(finalPrompt, {
-  maxTokens: 3000,
-  jsonMode: true,
-});
+    console.log("========== FINAL AGGREGATION ==========");
+    console.log("Final prompt characters:", finalPrompt.length);
+    console.log(
+      "Final prompt estimated tokens:",
+      Math.ceil(finalPrompt.length / 4)
+    );
+    console.log("Requested output tokens:", 5000);
+    console.log("JSON mode:", true);
+    console.log("========================================");
+
+   const rawText = await callOpenRouter(
+  finalPrompt,
+  {
+    maxTokens: 5000,
+    jsonMode: true,
+  }
+);
 
     console.log(
       "========== FINAL MODEL RESPONSE =========="
@@ -314,14 +385,18 @@ export async function generateSummary(
 
     return normalizeSummary(parsed);
   } catch (error) {
-    if (error instanceof SummarizationRequestError) {
-      throw error;
-    }
+  console.error("========== SUMMARIZATION ERROR ==========");
+  console.error(error);
+  console.error("==========================================");
 
-    throw new SummarizationRequestError(
-      error instanceof Error
-        ? error.message
-        : "Failed to summarize the document."
-    );
+  if (error instanceof SummarizationRequestError) {
+    throw error;
   }
+
+  throw new SummarizationRequestError(
+    error instanceof Error
+      ? error.message
+      : "Failed to summarize the document."
+  );
+}
 }

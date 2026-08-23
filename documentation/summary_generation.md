@@ -4,7 +4,7 @@
 
 This feature adds AI-generated summaries of the text extracted from an uploaded document. Once extraction succeeds, the user can generate a **short**, **medium**, or **long** summary containing a title, document type, summary paragraph, key points, main ideas, action items, and notable entities.
 
-It uses a **free, no-API-fee model** — [OpenRouter](https://openrouter.ai)'s free tier serving `meta-llama/llama-3.3-70b-instruct:free`.
+It uses a **free, no-API-fee model** — [OpenRouter](https://openrouter.ai)'s free tier serving `nvidia/nemotron-3-super-120b-a12b:free`.
 
 ## Approach
 

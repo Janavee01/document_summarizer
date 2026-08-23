@@ -4,14 +4,10 @@
 
 **Project:** Document Summarizer
 **Current Version:** V2
-**Status:** V2 implemented; functional verification in progress
+**Status:** V2 implemented and verified
 **Next Version:** V3 — Universal Document Extraction with Scanned PDF OCR
 
-Document Summarizer is a web application that accepts PDF and image documents, extracts their textual content, and prepares the extracted content for intelligent summarization.
-
-The project is being developed incrementally, with each version introducing and validating a distinct layer of functionality.
-
----
+Document Summarizer is a web application that accepts PDF and image documents, extracts their text, and prepares the content for intelligent summarization. Development is divided into versions so that each major layer can be implemented and validated independently.
 
 ## 2. Technology Stack
 
@@ -34,44 +30,33 @@ The project is being developed incrementally, with each version introducing and 
 * `pdf-parse` 2.4.5
 * `tesseract.js` 7.0.0
 
-### Utilities & Development
+### Development
 
-* `clsx`
-* `tailwind-merge`
 * npm
 * ESLint
 * Git/GitHub
-
----
+* `clsx`
+* `tailwind-merge`
 
 ## 3. Project Structure
 
 ```text
 document_summarizer/
-│
 ├── app/
-│   ├── api/
-│   │   └── extract/
-│   │       └── route.ts
+│   ├── api/extract/route.ts
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── page.tsx
-│
-├── components/
-│   └── upload/
-│       └── document-reader.tsx
-│
+├── components/upload/document-reader.tsx
 ├── lib/
 │   ├── extraction/
 │   │   ├── index.ts
 │   │   ├── ocr.ts
 │   │   └── pdf.ts
 │   └── file-validation.ts
-│
 ├── types/
 │   ├── document.ts
 │   └── summary.ts
-│
 ├── public/
 ├── .env.example
 ├── README.md
@@ -82,33 +67,27 @@ document_summarizer/
 └── eslint.config.mjs
 ```
 
----
+## 4. Version History
 
-# 4. Version History
-
-## V0 — Project Foundation
+### V0 — Project Foundation
 
 **Status:** Complete
 
-V0 established the initial frontend foundation.
+V0 established the initial application interface.
 
-### Implemented
+**Implemented:**
 
-* Next.js App Router application
-* Application branding and landing page
+* Next.js App Router foundation
+* Branding and landing page
 * Responsive layout
-* Upload panel
-* File picker interaction
-* Drag-and-drop interaction
-* Drag-over visual state
+* Upload panel and file picker
+* Drag-and-drop support
+* Drag-over and focus states
 * Keyboard accessibility using Enter and Space
-* Focus states
 
-At this stage, the upload interface did **not** perform document extraction.
+At this stage, uploading did not perform document extraction.
 
-### Validation
-
-The application was validated using:
+**Validation:**
 
 ```bash
 npm run dev
@@ -117,198 +96,104 @@ npx eslint .
 npm run build
 ```
 
----
-
-## V1 — Upload and File Handling
+### V1 — Upload and File Handling
 
 **Status:** Complete
 
-V1 converted the initial upload interface into a functional client-side document selection workflow.
+V1 converted the interface into a functional file-selection workflow.
 
-### Supported Files
+**Supported formats:** PDF, PNG, JPG, JPEG
+**Maximum size:** 10 MB
 
-* PDF
-* PNG
-* JPG
-* JPEG
+**Implemented:**
 
-### File Limit
-
-* Maximum size: **10 MB**
-
-### Implemented
-
-* Reusable file validation through `lib/file-validation.ts`
-* Browser file picker
-* Drag-and-drop
-* Drag-over feedback
+* Reusable file validation
+* File picker and drag-and-drop
 * Keyboard-accessible upload
 * Selected-file display
 * File name, type, and size information
-* Image previews using browser object URLs
+* Image previews
 * PDF file icon
-* Remove document
-* Replace document
+* Remove and replace actions
 
-The file input was kept in a stable location so that replacing a selected document continues to work correctly.
+Invalid files are rejected before entering the selected-file state.
 
-### V1 Workflow
-
-```text
-┌─────────┐
-│  Idle   │
-└────┬────┘
-     │
-     ▼
-┌───────────────┐
-│ File Selected │
-└──────┬────────┘
-       │
-       ▼
-┌───────────────┐
-│ File Displayed│
-└──────┬────────┘
-       │
-       ├──────────────┐
-       ▼              ▼
-   Replace          Remove
-       │              │
-       └──────► Idle ◄┘
-```
-
-Invalid files produce validation errors instead of entering the selected-file state.
-
----
-
-# 5. V2 — Text Extraction and OCR
+### V2 — Text Extraction and OCR
 
 **Status:** Implemented
 
-V2 introduced the backend document-processing pipeline.
-
-The application now provides a unified extraction endpoint for PDFs and standalone images.
-
-## V2 Architecture
+V2 introduced the backend extraction pipeline and a unified API for PDFs and standalone images.
 
 ```text
-                 Browser
-                    │
-                    │ multipart/form-data
-                    ▼
-             POST /api/extract
-                    │
-                    ▼
-          Server-side validation
-                    │
-                    ▼
-          Unified extraction service
-                    │
-              ┌─────┴─────┐
-              │           │
-              ▼           ▼
-             PDF        Image
-              │           │
-              ▼           ▼
-          pdf-parse   Tesseract.js
-              │           │
-              └─────┬─────┘
-                    ▼
-          Normalized extraction
-                    │
-                    ▼
-                 Browser
+Browser
+   │
+   │ multipart/form-data
+   ▼
+POST /api/extract
+   │
+   ▼
+Server-side validation
+   │
+   ▼
+Unified extraction service
+   │
+   ├──────────────┐
+   ▼              ▼
+  PDF           Image
+   │              │
+   ▼              ▼
+pdf-parse     Tesseract.js
+   │              │
+   └──────┬───────┘
+          ▼
+Normalized result
+          │
+          ▼
+       Browser
 ```
 
-The API route is separated from the extraction implementation so that document-processing libraries can be changed or extended without coupling the frontend to them.
-
----
-
-## 6. PDF Extraction
+## 5. PDF Extraction
 
 **File:** `lib/extraction/pdf.ts`
 
-PDF text extraction uses:
-
-```text
-pdf-parse@2.4.5
-```
-
-The current package API uses:
+PDF text extraction uses `pdf-parse@2.4.5` and its current `PDFParse` API.
 
 ```ts
-import { PDFParse } from "pdf-parse";
-```
-
-### Processing Flow
-
-```text
-PDF Buffer
-    │
-    ▼
 new PDFParse({ data: buffer })
-    │
-    ▼
-getText()
-    │
-    ├── Extracted text
-    └── Page count
-    │
-    ▼
-Parser destroyed
 ```
 
-The parser is explicitly destroyed after processing to avoid retaining resources.
+The parser extracts:
 
-The PDF extraction result provides:
+* document text
+* page count
 
-```ts
-{
-  text: string;
-  pageCount: number;
-}
-```
+The parser is explicitly destroyed after processing to release resources.
 
----
-
-# 7. Image OCR
+## 6. Image OCR
 
 **File:** `lib/extraction/ocr.ts`
 
-Standalone image OCR uses:
-
-```text
-tesseract.js@7.0.0
-```
-
-The current OCR language is English.
-
-### Processing Flow
+Standalone images are processed using `tesseract.js@7.0.0`.
 
 ```text
 Image Buffer
-     │
-     ▼
+     ↓
 Tesseract Worker
-     │
-     ▼
+     ↓
 English OCR
-     │
-     ▼
+     ↓
 Extracted Text
-     │
-     ▼
+     ↓
 Worker Terminated
 ```
 
-Tesseract.js performs OCR without requiring a system-level Tesseract installation.
+OCR runs through Tesseract.js without requiring a system-level Tesseract installation.
 
----
-
-# 8. Unified Extraction Service
+## 7. Unified Extraction Service
 
 **File:** `lib/extraction/index.ts`
 
-The application exposes a single extraction interface:
+The application exposes one extraction interface:
 
 ```ts
 extractDocumentText(buffer, sourceType)
@@ -320,13 +205,9 @@ where:
 sourceType = "pdf" | "image"
 ```
 
-This abstraction prevents the rest of the application from depending directly on `pdf-parse` or Tesseract.
+This keeps the rest of the application independent of the underlying extraction libraries.
 
----
-
-# 9. Normalized Extraction Result
-
-The extraction service normalizes results into a common structure:
+The normalized result is:
 
 ```ts
 {
@@ -338,29 +219,9 @@ The extraction service normalizes results into a common structure:
 }
 ```
 
-### Metadata
+This provides a consistent representation regardless of the original file type.
 
-* `text` — extracted document content
-* `pageCount` — available for PDFs
-* `wordCount` — number of whitespace-separated words
-* `characterCount` — number of extracted characters
-* `method` — extraction method used
-
-For normal PDFs:
-
-```text
-method = "pdf"
-```
-
-For image OCR:
-
-```text
-method = "ocr"
-```
-
----
-
-# 10. Empty Extraction Handling
+## 8. Empty Extraction Handling
 
 V2 introduced:
 
@@ -368,33 +229,23 @@ V2 introduced:
 EmptyExtractionError
 ```
 
-This distinguishes between:
-
-1. Successful extraction containing usable text
-2. Successful processing that produced no usable text
-
-This distinction is important for scanned documents.
+This distinguishes successful extraction from successful processing that produced no usable text.
 
 For example:
 
 ```text
 Scanned PDF
-     │
-     ▼
-  pdf-parse
-     │
-     ▼
+    ↓
+pdf-parse
+    ↓
 No meaningful text
-     │
-     ▼
+    ↓
 EmptyExtractionError
 ```
 
-The application does not incorrectly report such a document as successfully extracted.
+This prevents documents with no extractable content from being incorrectly reported as successfully processed.
 
----
-
-# 11. API
+## 9. Extraction API
 
 **Endpoint:**
 
@@ -402,33 +253,17 @@ The application does not incorrectly report such a document as successfully extr
 POST /api/extract
 ```
 
-**File:**
+**File:** `app/api/extract/route.ts`
 
-```text
-app/api/extract/route.ts
-```
+The endpoint accepts a multipart form containing a `file`.
 
-The endpoint accepts a multipart form containing:
+Server-side validation independently checks:
 
-```text
-file
-```
+* file presence
+* supported file type
+* maximum file size
 
-## Server-Side Validation
-
-The API validates the uploaded file independently of client-side validation using:
-
-```ts
-validateFile()
-```
-
-Validation includes:
-
-* File presence
-* Supported file type
-* Maximum file size
-
-## Error Codes
+### Error Codes
 
 ```text
 NO_FILE
@@ -465,139 +300,61 @@ EXTRACTION_FAILED
 }
 ```
 
----
-
-# 12. Runtime Configuration
+## 10. Runtime Configuration
 
 The extraction route uses the Node.js runtime:
 
 ```ts
 export const runtime = "nodejs";
-```
-
-The route also allows additional processing time:
-
-```ts
 export const maxDuration = 60;
 ```
 
-`pdf-parse` and `tesseract.js` are configured as server external packages in `next.config.ts` to avoid bundling issues associated with their Node/WASM-related behavior.
+`pdf-parse` and `tesseract.js` are configured as server external packages in `next.config.ts` to avoid Node/WASM bundling issues.
 
----
+## 11. V2 Verification
 
-# 13. V2 Verification
+The implementation was verified using development, type-checking, linting, build, and functional tests.
 
-The following checks have been performed:
+| Test             | Result                          |
+| ---------------- | ------------------------------- |
+| Normal PDF       | PASS — text extracted           |
+| Standalone image | PASS — OCR extracted text       |
+| Image-based PDF  | PARTIAL — requires OCR fallback |
+| TypeScript       | PASS                            |
+| ESLint           | PASS — 0 errors, 1 warning      |
+| Production build | PASS                            |
 
-### Development Server
+The remaining ESLint warning is `@next/next/no-img-element`, related to the browser-generated image preview and currently non-blocking.
 
-```bash
-npm run dev
-```
+## 12. Current V2 Limitation
 
-Application successfully runs at:
+The main V2 limitation is **scanned/image-based PDFs**.
 
-```text
-http://localhost:3000
-```
-
-### TypeScript
-
-```bash
-npx tsc --noEmit
-```
-
-**Result:** PASS
-
-The initial outdated `pdf-parse` default import was replaced with the current `PDFParse` API.
-
-### ESLint
-
-```bash
-npm run lint
-```
-
-**Result:** 0 errors, 1 warning
-
-The remaining warning is:
-
-```text
-@next/next/no-img-element
-```
-
-It relates to the browser-generated image preview and is currently non-blocking.
-
-### Production Build
-
-```bash
-npm run build
-```
-
-**Result:** PASS
-
----
-
-# 14. Functional Test Results
-
-| Test             | Result  | Notes                                      |
-| ---------------- | ------- | ------------------------------------------ |
-| Normal PDF       | PASS    | Text successfully extracted                |
-| Standalone image | PASS    | Tesseract successfully extracted text      |
-| Image-based PDF  | PARTIAL | PDF parser returns little non-content text |
-| TypeScript       | PASS    | No TypeScript errors                       |
-| ESLint           | PASS    | 0 errors, 1 warning                        |
-| Production build | PASS    | Build completes successfully               |
-
----
-
-# 15. Current V2 Limitation
-
-The primary limitation is scanned or image-based PDFs.
-
-A normal PDF follows:
+Normal PDFs work as expected:
 
 ```text
 Text PDF
-   │
-   ▼
+   ↓
 pdf-parse
-   │
-   ▼
+   ↓
 Meaningful text
-   │
-   ▼
+   ↓
 Successful extraction
 ```
 
-A standalone image follows:
+Standalone images use OCR:
 
 ```text
 Image
-   │
-   ▼
+   ↓
 Tesseract.js
-   │
-   ▼
-Successful OCR
+   ↓
+Extracted text
 ```
 
-However, an image-based PDF currently follows:
+However, scanned PDFs are currently passed to `pdf-parse`. Since their pages contain images rather than machine-readable text, the parser may return only small amounts of metadata or non-content text.
 
-```text
-Image-based PDF
-      │
-      ▼
-   pdf-parse
-      │
-      ▼
-Little or no meaningful text
-      │
-      ▼
-May be incorrectly treated as
-successful PDF extraction
-```
-
-Testing showed that a two-page image-based PDF could produce metadata such as:
+Testing showed that a two-page image-based PDF could return approximately:
 
 ```text
 2 pages
@@ -605,25 +362,20 @@ Testing showed that a two-page image-based PDF could produce metadata such as:
 28 characters
 ```
 
-even though the meaningful text inside the images was not extracted.
+even though meaningful text was visible in the page images.
 
-Therefore, checking only whether the extracted text is completely empty is insufficient.
+Therefore, checking only whether extracted text is completely empty is insufficient. The system must determine whether the extracted text is **meaningful** before deciding that PDF extraction succeeded.
 
----
+## 13. V3 — Universal Document Extraction
 
-# 16. V3 — Universal Document Extraction
+**Status:** Implemented
 
-**Status:** Planned
-
-V3 will improve extraction by detecting whether a PDF contains meaningful machine-readable text.
-
-## Target Architecture
+V3 introduces **page-level hybrid PDF extraction**, allowing text PDFs, scanned PDFs, and mixed PDFs to be processed through the appropriate method.
 
 ```text
                     Document
                        │
               ┌────────┴────────┐
-              │                 │
               ▼                 ▼
              PDF              Image
               │                 │
@@ -631,105 +383,67 @@ V3 will improve extraction by detecting whether a PDF contains meaningful machin
           pdf-parse          Tesseract
               │                 │
               ▼                 │
-     Meaningful text?            │
-         │       │               │
-        Yes      No              │
-         │       │               │
-         │       ▼               │
-         │   Render PDF pages    │
-         │       │               │
-         │       ▼               │
-         │   Page images         │
-         │       │               │
-         │       ▼               │
-         │   Tesseract OCR ◄─────┘
-         │       │
-         └───┬───┘
-             ▼
+       Meaningful text?          │
+          │       │              │
+         Yes      No             │
+          │       │              │
+          │       ▼              │
+          │   Render PDF pages   │
+          │       │              │
+          │       ▼              │
+          │   Page images        │
+          │       │              │
+          │       ▼              │
+          │   Tesseract OCR ◄────┘
+          │       │
+          └───┬───┘
+              ▼
       Normalized result
-             │
-             ▼
-          Browser
+              │
+              ▼
+           Browser
 ```
 
-## V3 Behavior
-
-### Text PDF
+For each PDF page, the system determines whether usable text is available:
 
 ```text
-PDF
- │
- ▼
-pdf-parse
- │
- ▼
-Meaningful text detected
- │
- ▼
-Return PDF extraction
+PDF Page
+   ↓
+Text extraction
+   ↓
+Meaningful text?
+ ┌─┴─────────┐
+Yes          No
+ │            │
+ ▼            ▼
+Use text   Render page
+              ↓
+           OCR page
+              ↓
+        Use OCR text
 ```
 
-### Scanned PDF
+This page-level approach also supports **mixed PDFs**, where some pages contain normal text and others are scanned.
 
-```text
-PDF
- │
- ▼
-pdf-parse
- │
- ▼
-Insufficient meaningful text
- │
- ▼
-Render pages as images
- │
- ▼
-Tesseract OCR
- │
- ▼
-Combine page text
- │
- ▼
-Return OCR extraction
-```
+The goal is to make extraction transparent to the user: regardless of whether the source is a text PDF, scanned PDF, mixed PDF, or standalone image, the system should return the best available textual representation.
 
-### Standalone Image
-
-```text
-Image
- │
- ▼
-Tesseract OCR
- │
- ▼
-Return OCR extraction
-```
-
-The goal of V3 is to make the extraction layer transparent to the user: regardless of whether the source is a text PDF, scanned PDF, or standalone image, the application should return the best available textual representation.
-
----
-
-# 17. Version Roadmap
+## 14. Version Roadmap
 
 ```text
 V0
 Project Foundation
-     │
-     ▼
+      ↓
 V1
 Upload & File Handling
-     │
-     ▼
+      ↓
 V2
 PDF Text Extraction + Image OCR
-     │
-     ▼
+      ↓
 V3
-Universal Extraction + Scanned PDF OCR
-     │
-     ▼
+Universal / Hybrid Document Extraction
+      ↓
 Future
-Text Cleaning + Summarization
+Text Quality + AI Summarization
 ```
 
-The immediate development priority is V3 scanned-PDF detection and OCR fallback. Once reliable document extraction is established, the extracted content can be passed to the summarization layer.
+The extraction layer is the foundation for the subsequent summarization system. Once reliable text is obtained from all supported document types, the complete extracted content can be passed to the chunked AI summarization pipeline.
