@@ -6,7 +6,6 @@ import {
   Check,
   Copy,
   Link2,
-  Loader2,
   Sparkles,
   X,
 } from "lucide-react";
@@ -14,6 +13,9 @@ import { cn } from "@/lib/utils";
 import { buildShareLink, copyTextToClipboard } from "@/lib/share";
 import type { Summary, SummaryLength } from "@/types/summary";
 import { SummaryView } from "@/components/summary/summary-view";
+import { DocumentQa } from "@/components/summary/document-qa";
+import { LoadingProgress } from "@/components/ui/loading-progress";
+import { useCreepingProgress } from "@/lib/use-creeping-progress";
 
 interface SummaryPanelProps {
   text: string;
@@ -36,6 +38,7 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const copyTimerRef = useRef<number | null>(null);
+  const summaryProgress = useCreepingProgress(status === "loading");
 
   useEffect(() => {
     return () => {
@@ -89,6 +92,49 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
     if (status === "success" || status === "error") {
       generateSummary(newLength);
     }
+  };
+
+    const handleCopySummary = async () => {
+    if (!summary) return;
+
+    const sections = [
+      summary.title,
+      `Document Type: ${summary.documentType}`,
+      "",
+      "Summary",
+      summary.summary,
+    ];
+
+    if (summary.keyPoints.length > 0) {
+      sections.push("", "Key Points", ...summary.keyPoints.map((item) => `• ${item}`));
+    }
+
+    if (summary.mainIdeas.length > 0) {
+      sections.push("", "Main Ideas", ...summary.mainIdeas.map((item) => `• ${item}`));
+    }
+
+    if (summary.actionItems.length > 0) {
+      sections.push("", "Action Items", ...summary.actionItems.map((item) => `• ${item}`));
+    }
+
+    if (summary.entities.length > 0) {
+      sections.push("", "Mentioned", summary.entities.join(", "));
+    }
+
+    const copied = await copyTextToClipboard(sections.join("\n"));
+
+    if (!copied) return;
+
+    setCopyStatus("copied");
+
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
+    }
+
+    copyTimerRef.current = window.setTimeout(() => {
+      setCopyStatus("idle");
+      copyTimerRef.current = null;
+    }, 2000);
   };
 
   const handleGenerateLink = () => {
@@ -165,15 +211,11 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
         )}
 
         {status === "loading" && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600"
-          >
-            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-            Generating {length} summary…
-          </div>
-        )}
+  <LoadingProgress
+    label={`Generating ${length} summary…`}
+    progress={summaryProgress}
+  />
+)}
 
         {status === "error" && errorMessage && (
           <div className="space-y-3">
@@ -201,24 +243,48 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
           <SummaryView
             summary={summary}
             headerAction={
-              <>
-                <button
-                  type="button"
-                  onClick={handleGenerateLink}
-                  aria-expanded={shareUrl !== null}
-                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
-                >
-                  Share
-                </button>
-                <button
-                  type="button"
-                  onClick={() => generateSummary(length)}
-                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
-                >
-                  Regenerate
-                </button>
-              </>
-            }
+  <>
+    <button
+      type="button"
+      onClick={handleCopySummary}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2",
+        copyStatus === "copied"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+      )}
+    >
+      {copyStatus === "copied" ? (
+        <>
+          <Check aria-hidden="true" className="h-3.5 w-3.5" />
+          Copied!
+        </>
+      ) : (
+        <>
+          <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+          Copy
+        </>
+      )}
+    </button>
+
+    <button
+      type="button"
+      onClick={handleGenerateLink}
+      aria-expanded={shareUrl !== null}
+      className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+    >
+      Share
+    </button>
+
+    <button
+      type="button"
+      onClick={() => generateSummary(length)}
+      className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+    >
+      Regenerate
+    </button>
+  </>
+}
           >
             {shareUrl && (
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
@@ -274,6 +340,8 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
             )}
           </SummaryView>
         )}
+
+        {status === "success" && <DocumentQa text={text} />}
       </div>
     </div>
   );

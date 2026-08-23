@@ -5,7 +5,6 @@ import {
   AlertCircle,
   FileText,
   Image as ImageIcon,
-  Loader2,
   Upload,
   X,
 } from "lucide-react";
@@ -18,6 +17,8 @@ import {
 import type { ExtractionResult } from "@/lib/extraction";
 import { DocumentReader } from "@/components/upload/document-reader";
 import { SummaryPanel } from "@/components/summary/summary-panel";
+import { LoadingProgress } from "@/components/ui/loading-progress";
+import { useCreepingProgress } from "@/lib/use-creeping-progress";
 
 type ExtractionStatus = "idle" | "processing" | "success" | "error";
 
@@ -29,9 +30,11 @@ export default function Home() {
   const [isDragActive, setIsDragActive] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const imagePreviewUrlRef = useRef<string | null>(null);
-
+  
   const [extractionStatus, setExtractionStatus] =
     useState<ExtractionStatus>("idle");
+  const extractionInProgress = extractionStatus === "processing";
+  const extractionProgress = useCreepingProgress(extractionInProgress);
   const [extractionResult, setExtractionResult] =
     useState<ExtractionResult | null>(null);
   const [extractionMessage, setExtractionMessage] = useState<string | null>(
@@ -305,15 +308,13 @@ export default function Home() {
         )}
 
         {extractionStatus === "processing" && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600"
-          >
-            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-            {processingLabel}
-          </div>
-        )}
+  <div className="mt-4">
+    <LoadingProgress
+      label={processingLabel}
+      progress={extractionProgress}
+    />
+  </div>
+)}
 
         {extractionStatus === "error" && extractionMessage && (
           <div

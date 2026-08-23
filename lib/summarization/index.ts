@@ -2,6 +2,7 @@ import type { Summary, SummaryLength } from "@/types/summary";
 
 import { callOpenRouter } from "./openrouter";
 import { chunkText } from "./chunking";
+import { extractJson, toStringArray } from "./json-utils";
 
 const LENGTH_GUIDANCE: Record<SummaryLength, string> = {
   short:
@@ -137,85 +138,6 @@ ${summary}`
 `;
 }
 
-function extractJson(raw: string): unknown {
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/i, "")
-    .trim();
-
-  // First: try the complete response directly.
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // Continue with fallback extraction.
-  }
-
-  // Second: find the first complete JSON object.
-  const start = cleaned.indexOf("{");
-
-  if (start === -1) {
-    throw new SummarizationRequestError(
-      "The summarizer returned a response that couldn't be parsed."
-    );
-  }
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let i = start; i < cleaned.length; i++) {
-    const char = cleaned[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-
-    if (inString) {
-      continue;
-    }
-
-    if (char === "{") {
-      depth++;
-    } else if (char === "}") {
-      depth--;
-
-      if (depth === 0) {
-        const candidate = cleaned.slice(start, i + 1);
-
-        try {
-          return JSON.parse(candidate);
-        } catch {
-          break;
-        }
-      }
-    }
-  }
-
-  throw new SummarizationRequestError(
-    "The summarizer returned a response that couldn't be parsed."
-  );
-}
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  return value.filter(
-    (item): item is string =>
-      typeof item === "string" && item.trim().length > 0
-  );
-}
 
 function normalizeSummary(parsed: unknown): Summary {
   if (typeof parsed !== "object" || parsed === null) {
@@ -339,6 +261,12 @@ export async function generateSummary(
       "==============================================="
     );
 
+    console.log("========== CHUNK SUMMARY CONTENT ==========");
+chunkSummaries.forEach((summary, index) => {
+  console.log(`--- Chunk ${index + 1} ---`);
+  console.log(summary);
+});
+console.log("============================================");
     /*
      * Step 2:
      * Give all intermediate summaries to the model
