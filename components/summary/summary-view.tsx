@@ -16,8 +16,8 @@ export function SummaryView({
 }: SummaryViewProps) {
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-zinc-900">{summary.title}</p>
           <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
             <Tag aria-hidden="true" className="h-3 w-3" />
@@ -25,7 +25,9 @@ export function SummaryView({
           </span>
         </div>
         {headerAction ? (
-          <div className="flex shrink-0 items-center gap-2">{headerAction}</div>
+          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+            {headerAction}
+          </div>
         ) : null}
       </div>
 

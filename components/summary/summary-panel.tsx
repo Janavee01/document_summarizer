@@ -12,16 +12,21 @@ import {
 import { cn } from "@/lib/utils";
 import { buildShareLink, copyTextToClipboard } from "@/lib/share";
 import type { Summary, SummaryLength } from "@/types/summary";
+import {
+  createHistoryEntryFromSummary,
+  saveHistoryEntry,
+} from "@/lib/history";
 import { SummaryView } from "@/components/summary/summary-view";
 import { DocumentQa } from "@/components/summary/document-qa";
+import { ExportButtons } from "@/components/summary/export-buttons";
 import { LoadingProgress } from "@/components/ui/loading-progress";
 import { useCreepingProgress } from "@/lib/use-creeping-progress";
 
 interface SummaryPanelProps {
-  text: string;
+  file: File;
 }
 
-type SummaryStatus = "idle" | "loading" | "success" | "error";
+type Phase = "idle" | "extracting" | "summarizing" | "success" | "error";
 type CopyStatus = "idle" | "copied";
 
 const LENGTH_OPTIONS: { value: SummaryLength; label: string }[] = [
@@ -30,15 +35,23 @@ const LENGTH_OPTIONS: { value: SummaryLength; label: string }[] = [
   { value: "long", label: "Long" },
 ];
 
-export function SummaryPanel({ text }: SummaryPanelProps) {
+export function SummaryPanel({ file }: SummaryPanelProps) {
   const [length, setLength] = useState<SummaryLength>("medium");
-  const [status, setStatus] = useState<SummaryStatus>("idle");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const copyTimerRef = useRef<number | null>(null);
-  const summaryProgress = useCreepingProgress(status === "loading");
+
+  // Extracted document text is kept out of the UI entirely — it only feeds
+  // the summarizer and the Q&A feature. Held in state so it can be rendered
+  // into the Q&A section without touching refs during render.
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [sourceWordCount, setSourceWordCount] = useState<number | null>(null);
+
+  const extractionProgress = useCreepingProgress(phase === "extracting");
+  const summaryProgress = useCreepingProgress(phase === "summarizing");
 
   useEffect(() => {
     return () => {
@@ -48,40 +61,98 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
     };
   }, []);
 
-  const generateSummary = async (requestedLength: SummaryLength) => {
-    if (status === "loading") return;
+  const extractDocument = async (): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-    setStatus("loading");
+    const response = await fetch("/api/extract", {
+      method: "POST",
+      body: formData,
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.success) {
+      throw new Error(
+        payload?.error?.message ??
+          "Something went wrong while extracting text. Please try again."
+      );
+    }
+
+    const result = payload.data as {
+      text: string;
+      wordCount?: number;
+    };
+
+    setExtractedText(result.text);
+    setSourceWordCount(
+      typeof result.wordCount === "number" ? result.wordCount : null
+    );
+
+    return result.text;
+  };
+
+  const requestSummary = async (
+    text: string,
+    requestedLength: SummaryLength
+  ): Promise<Summary> => {
+    const response = await fetch("/api/summarize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, length: requestedLength }),
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.success) {
+      throw new Error(
+        payload?.error?.message ??
+          "Something went wrong while generating the summary. Please try again."
+      );
+    }
+
+    return payload.data as Summary;
+  };
+
+  const runPipeline = async (requestedLength: SummaryLength) => {
+    const needsExtraction = extractedText === null;
+
+    setPhase(needsExtraction ? "extracting" : "summarizing");
     setErrorMessage(null);
+    setShareUrl(null);
+    setSummary(null);
 
     try {
-      const response = await fetch("/api/summarize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, length: requestedLength }),
-      });
+      let text = extractedText;
 
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok || !payload?.success) {
-        setShareUrl(null);
-        setStatus("error");
-        setErrorMessage(
-          payload?.error?.message ??
-            "Something went wrong while generating the summary. Please try again."
-        );
-        return;
+      if (!text) {
+        text = await extractDocument();
       }
 
-      setSummary(payload.data as Summary);
-      setShareUrl(null);
-      setStatus("success");
-    } catch {
-      setShareUrl(null);
-      setStatus("error");
-      setErrorMessage(
-        "Something went wrong while generating the summary. Check your connection and try again."
+      setPhase("summarizing");
+      const generated = await requestSummary(text, requestedLength);
+
+      saveHistoryEntry(
+        createHistoryEntryFromSummary({
+          summary: generated,
+          length: requestedLength,
+          fileName: file.name,
+          sourceWordCount,
+        })
       );
+
+      setSummary(generated);
+      setPhase("success");
+    } catch (err) {
+      // If extraction itself failed the cached text is still null, so the
+      // next attempt re-runs extraction; a summarizer failure keeps it and
+      // the retry goes straight to summary generation.
+      setErrorMessage(
+        err instanceof Error && err.message
+          ? err.message
+          : "Something went wrong. Check your connection and try again."
+      );
+      setPhase("error");
     }
   };
 
@@ -89,8 +160,8 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
     setLength(newLength);
     // If a summary already exists, regenerate immediately at the new length
     // so the length control feels live rather than requiring a second click.
-    if (status === "success" || status === "error") {
-      generateSummary(newLength);
+    if (phase === "success" || phase === "error") {
+      runPipeline(newLength);
     }
   };
 
@@ -160,6 +231,11 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
     }, 2000);
   };
 
+  const exportMeta = {
+    fileName: file.name,
+    length,
+  };
+
   return (
     <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
@@ -170,7 +246,7 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
           <div>
             <p className="text-sm font-medium text-zinc-900">Summary</p>
             <p className="text-xs text-zinc-500">
-              Generate a smart summary of the extracted text.
+              Generate a smart summary of your document.
             </p>
           </div>
         </div>
@@ -185,9 +261,12 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
               key={option.value}
               type="button"
               onClick={() => handleLengthChange(option.value)}
+              disabled={
+                phase === "extracting" || phase === "summarizing"
+              }
               aria-pressed={length === option.value}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                 length === option.value
                   ? "bg-zinc-900 text-white"
                   : "text-zinc-600 hover:bg-zinc-100"
@@ -200,50 +279,50 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
       </div>
 
       <div className="px-4 py-4">
-        {status === "idle" && (
-          <button
-            type="button"
-            onClick={() => generateSummary(length)}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
-          >
-            Generate summary
-          </button>
-        )}
-
-        {status === "loading" && (
-  <LoadingProgress
-    label={`Generating ${length} summary…`}
-    progress={summaryProgress}
-  />
-)}
-
-        {status === "error" && errorMessage && (
+        {(phase === "idle" || phase === "error") && (
           <div className="space-y-3">
-            <div
-              role="alert"
-              className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
-            >
-              <AlertCircle
-                aria-hidden="true"
-                className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
-              />
-              <p className="text-sm text-red-700">{errorMessage}</p>
-            </div>
+            {phase === "error" && errorMessage && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+              >
+                <AlertCircle
+                  aria-hidden="true"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
+                />
+                <p className="text-sm text-red-700">{errorMessage}</p>
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => generateSummary(length)}
-              className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+              onClick={() => runPipeline(length)}
+              className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
             >
-              Try again
+              {phase === "error" ? "Try again" : "Generate summary"}
             </button>
           </div>
         )}
 
-        {status === "success" && summary && (
+        {phase === "extracting" && (
+          <LoadingProgress
+            label={`Extracting text from ${file.name}…`}
+            progress={extractionProgress}
+          />
+        )}
+
+        {phase === "summarizing" && (
+          <LoadingProgress
+            label={`Generating ${length} summary…`}
+            progress={summaryProgress}
+          />
+        )}
+
+        {phase === "success" && summary && (
           <SummaryView
             summary={summary}
             headerAction={
   <>
+    <ExportButtons summary={summary} meta={exportMeta} />
     <button
       type="button"
       onClick={handleCopySummary}
@@ -278,7 +357,7 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
 
     <button
       type="button"
-      onClick={() => generateSummary(length)}
+      onClick={() => runPipeline(length)}
       className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
     >
       Regenerate
@@ -341,7 +420,9 @@ export function SummaryPanel({ text }: SummaryPanelProps) {
           </SummaryView>
         )}
 
-        {status === "success" && <DocumentQa text={text} />}
+        {phase === "success" && extractedText && (
+          <DocumentQa text={extractedText} />
+        )}
       </div>
     </div>
   );

@@ -36,8 +36,9 @@ export function useCreepingProgress(
       setProgress((current) => {
         if (current >= ceiling) return ceiling;
 
-        // Ease-out: big steps early, tiny steps near the ceiling.
-        const step = Math.max(0.5, (ceiling - current) * 0.05);
+        // Ease-out: big steps early, tiny steps near the ceiling. Steps are
+        // floored to whole percents so the bar only ever shows integers.
+        const step = Math.max(1, Math.round((ceiling - current) * 0.05));
 
         return Math.min(ceiling, current + step);
       });
