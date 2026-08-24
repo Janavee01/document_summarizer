@@ -6,21 +6,48 @@ A full-stack document intelligence application that extracts text from PDFs and 
 
 ## Screenshots
 
-### Frontend UI
+### Frontend UI & Summary History
 
-![Frontend UI](./docs/frontend-ui.png)
+<table>
+<tr>
+<td align="center" width="50%">
 
-### Summary History
+**Frontend UI**
 
-![Summary History](./docs/summary-history.png)
+<img src="./frontend/documentation/frontend_ui.png" alt="Frontend UI" width="100%">
 
-### Q&A
+</td>
+<td align="center" width="50%">
 
-![Q\&A](./docs/qna.png)
+**Summary History**
 
-### Summary
+<img src="./frontend/documentation/summary_history.png" alt="Summary History" width="100%">
 
-![Summary](./docs/summary.png)
+</td>
+</tr>
+</table>
+
+### Q&A & Summary
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+**Q&A**
+
+<img src="./frontend/documentation/qna.png" alt="Q&A" width="100%">
+
+</td>
+<td align="center" width="50%">
+
+**Summary**
+
+<img src="./frontend/documentation/summary.png" alt="Summary" width="100%">
+
+</td>
+</tr>
+</table>
+
 
 ## Features
 
