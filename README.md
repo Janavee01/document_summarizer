@@ -7,42 +7,28 @@ A full-stack document intelligence application that extracts text from PDFs and 
 ## Screenshots
 
 <table>
-<tr>
-<td align="center" width="50%">
-
-**Frontend UI**
-
-<img src="./frontend/documentation/frontend_ui.png" alt="Frontend UI" width="100%">
-
-</td>
-<td align="center" width="50%">
-
-**Summary History**
-
-<img src="./frontend/documentation/summary_history.png" alt="Summary History" width="100%">
-
-</td>
-</tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <strong>Frontend UI</strong><br><br>
+      <img src="./frontend/documentation/frontend_ui.png" alt="Frontend UI" width="95%">
+    </td>
+    <td align="center" valign="top" width="50%">
+      <strong>Summary History</strong><br><br>
+      <img src="./frontend/documentation/summary_history.png" alt="Summary History" width="95%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <strong>Q&A</strong><br><br>
+      <img src="./frontend/documentation/qna.png" alt="Q&A" width="95%">
+    </td>
+    <td align="center" valign="top" width="50%">
+      <strong>Summary</strong><br><br>
+      <img src="./frontend/documentation/summary.png" alt="Summary" width="95%">
+    </td>
+  </tr>
 </table>
 
-<table>
-<tr>
-<td align="center" width="50%">
-
-**Q&A**
-
-<img src="./frontend/documentation/qna.png" alt="Q&A" width="100%">
-
-</td>
-<td align="center" width="50%">
-
-**Summary**
-
-<img src="./frontend/documentation/summary.png" alt="Summary" width="100%">
-
-</td>
-</tr>
-</table>
 
 
 ## Features
