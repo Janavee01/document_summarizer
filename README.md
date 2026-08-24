@@ -20,27 +20,72 @@ A full-stack document intelligence application that extracts text from PDFs and 
 - Client- and server-side file validation
 - Production deployment with Vercel and Render
 
+# Approach
+
+Document Summarizer is a Next.js web app that turns PDFs and images into structured summaries through a multi-stage pipeline.
+
+**Extraction:** A hybrid, page-level strategy tries native PDF text extraction first (`pdf-parse`), then falls back to OCR (`tesseract.js`) only for pages that fail a text-quality check — catching scanned or image-only pages without paying OCR's cost everywhere. OCR runs in parallel across a capped worker pool (max 4 workers, round-robin assigned) rather than a task queue, keeping the implementation simple while still cutting wall-clock time significantly.
+
+**Quality analysis:** Extracted text is scored using signals like character density and garbled-text ratios, distinguishing genuinely empty pages from low-quality ones and correctly handling technical/dense text that might otherwise look "noisy."
+
+**Summarization:** Long documents are split into overlapping chunks, each summarized independently via an OpenRouter-backed LLM client, then aggregated into a final summary — with JSON-mode outputs normalized and validated to handle model inconsistency.
+
+**Q&A:** Rather than embeddings, the app uses TF-IDF retrieval over document chunks to answer follow-up questions, prioritizing speed and simplicity over semantic depth for this use case.
+
+Throughout, the design favors modular, independently testable layers (extraction → quality → summarization → QA) with server-side validation and graceful error handling at each stage.
+
 ## Architecture
 
-```mermaid
-flowchart LR
-    U[User] --> V[Vercel<br/>Next.js Frontend]
-    V -->|HTTPS API requests| R[Render<br/>Next.js Backend]
-
-    R --> E[Document Extraction]
-    E --> P[PDF Parser]
-    E --> O[Tesseract.js OCR]
-
-    R --> S[Summarization Pipeline]
-    R --> Q[QA Retrieval<br/>TF-IDF + Cosine Similarity]
-
-    S --> AI[OpenRouter<br/>Nemotron Model]
-    Q --> AI
-
-    S --> R
-    Q --> R
-    E --> R
-    R --> V
+```
+                              +-------------------+
+                              |       User        |
+                              +---------+---------+
+                                        |
+                                        v
+                        +-------------------------------+
+                        |   Vercel (Next.js Frontend)   |
+                        +---------------+---------------+
+                                        |
+                                HTTPS API requests
+                                        |
+                                        v
+                        +-------------------------------+
+                        |   Render (Next.js Backend)    |
+                        +----+---------+---------+------+
+                             |         |         |
+              +--------------+   +-----+-----+   +--------------+
+              |                  |           |                  |
+              v                  v           v                  v
+   +----------------------+  +---------+  +---------------------------+
+   | Document Extraction  |  |         |  |     QA Retrieval          |
+   |                      |  |         |  | (TF-IDF + Cosine Sim.)    |
+   |  +----------------+  |  |         |  +-------------+-------------+
+   |  |  PDF Parser    |  |  |         |                |
+   |  +----------------+  |  |Summar-  |                |
+   |  +----------------+  |  |ization  |                |
+   |  | Tesseract.js   |  |  |Pipeline |                |
+   |  |     OCR        |  |  |         |                |
+   |  +----------------+  |  |         |                |
+   +----------+-----------+  +----+----+                |
+              |                   |                      |
+              |                   v                      v
+              |          +-------------------------------------+
+              |          |         OpenRouter                  |
+              |          |      (Nemotron Model)                |
+              |          +-------------------+-------------------+
+              |                              |
+              |                              |
+              +------------------------------+
+                             |
+                             v
+                +-------------------------------+
+                |   Render (Next.js Backend)    |
+                +---------------+---------------+
+                                |
+                                v
+                +-------------------------------+
+                |   Vercel (Next.js Frontend)   |
+                +-------------------------------+
 ```
 
 ### Request flow
