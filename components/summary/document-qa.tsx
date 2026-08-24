@@ -7,6 +7,7 @@ import {
   Loader2,
   MessageCircleQuestion,
   RotateCcw,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -142,13 +143,12 @@ export function DocumentQa({ text }: DocumentQaProps) {
   };
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2.5">
-        <MessageCircleQuestion
-          aria-hidden="true"
-          className="h-4 w-4 text-zinc-500"
-        />
-        <p className="text-sm font-medium text-zinc-900">
+    <div className="mt-6 rounded-xl border border-line bg-paper-raised">
+      <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brass-soft text-brass">
+          <MessageCircleQuestion aria-hidden="true" className="h-4 w-4" />
+        </span>
+        <p className="font-display text-sm font-semibold text-ink">
           Ask questions about this document
         </p>
       </div>
@@ -159,7 +159,7 @@ export function DocumentQa({ text }: DocumentQaProps) {
           <div
             role="status"
             aria-live="polite"
-            className="flex items-center gap-2 rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-500"
+            className="flex items-center gap-2 rounded-md bg-paper px-3 py-2 text-xs text-ink-faint"
           >
             <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
             Suggesting questions…
@@ -167,15 +167,15 @@ export function DocumentQa({ text }: DocumentQaProps) {
         )}
 
         {questionsStatus === "error" && errorMessage && (
-          <div className="flex items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2">
-            <p className="flex items-start gap-1.5 text-xs text-red-700">
+          <div className="flex items-center justify-between gap-2 rounded-md border border-danger/30 bg-danger-soft px-3 py-2">
+            <p className="flex items-start gap-1.5 text-xs text-danger">
               <AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {errorMessage}
             </p>
             <button
               type="button"
               onClick={retrySuggestedQuestions}
-              className="flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-50"
+              className="flex shrink-0 items-center gap-1 rounded-md border border-danger/30 bg-paper px-2 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"
             >
               <RotateCcw aria-hidden="true" className="h-3 w-3" />
               Retry
@@ -192,16 +192,16 @@ export function DocumentQa({ text }: DocumentQaProps) {
                 disabled={answerStatus === "loading"}
                 onClick={() => void askQuestion(question)}
                 className={cn(
-                  "flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-left text-xs text-zinc-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-1",
+                  "flex items-center gap-1 rounded-full border border-line bg-paper px-2.5 py-1 text-left text-xs text-ink-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal",
                   askedQuestions.has(question)
                     ? "opacity-50"
-                    : "hover:border-zinc-300 hover:bg-zinc-100",
+                    : "hover:border-brass/50 hover:bg-brass-soft hover:text-brass",
                   answerStatus === "loading" &&
                     !askedQuestions.has(question) &&
                     "cursor-not-allowed opacity-50"
                 )}
               >
-                <HelpCircle aria-hidden="true" className="h-3 w-3 shrink-0 text-zinc-400" />
+                <HelpCircle aria-hidden="true" className="h-3 w-3 shrink-0 text-ink-faint" />
                 {question}
               </button>
             ))}
@@ -222,14 +222,15 @@ export function DocumentQa({ text }: DocumentQaProps) {
             onChange={(event) => setInputValue(event.target.value)}
             placeholder="Ask anything about this document…"
             aria-label="Ask a question about the document"
-            className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-1"
+            className="min-w-0 flex-1 rounded-md border border-line bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
           />
           <button
             type="submit"
             disabled={answerStatus === "loading" || !inputValue.trim()}
-            className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+            aria-label="Send question"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal text-white transition-colors hover:bg-teal/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
           >
-            Ask
+            <Send aria-hidden="true" className="h-4 w-4" />
           </button>
         </form>
 
@@ -238,7 +239,7 @@ export function DocumentQa({ text }: DocumentQaProps) {
           <div className="space-y-3">
             {conversation.map((entry) => (
               <div key={entry.id} className="space-y-1.5">
-                <p className="text-sm font-medium text-zinc-900">
+                <p className="rounded-lg rounded-br-sm border border-line bg-brass-soft/60 px-3 py-1.5 text-sm font-medium text-ink sm:ml-8">
                   {entry.question}
                 </p>
 
@@ -246,16 +247,16 @@ export function DocumentQa({ text }: DocumentQaProps) {
                   <div
                     role="status"
                     aria-live="polite"
-                    className="flex items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500"
+                    className="flex items-center gap-2 rounded-lg rounded-bl-sm border border-line bg-paper px-3 py-2 text-xs text-ink-faint sm:mr-8"
                   >
                     <Loader2
                       aria-hidden="true"
-                      className="h-3.5 w-3.5 animate-spin"
+                      className="h-3.5 w-3.5 animate-spin text-teal"
                     />
                     Searching the document and generating an answer…
                   </div>
                 ) : (
-                  <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-relaxed text-zinc-700">
+                  <p className="rounded-lg rounded-bl-sm border border-line bg-paper px-3 py-2 text-sm leading-relaxed text-ink sm:mr-8">
                     {entry.answer}
                   </p>
                 )}

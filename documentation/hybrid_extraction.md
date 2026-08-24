@@ -109,7 +109,11 @@ PDF Page → Renderer → Image → Tesseract OCR → Text
 
 Uses **Tesseract.js** for image and rendered-PDF OCR.
 
-The OCR worker is terminated after processing to prevent resource leaks.
+Suspicious pages are recognized in parallel across a small worker pool
+(up to 4) instead of sequentially on a single worker. See
+[parallel_ocr.md](./parallel_ocr.md) for the full design.
+
+All OCR workers are terminated after processing to prevent resource leaks.
 
 ### Unified Extraction Service
 

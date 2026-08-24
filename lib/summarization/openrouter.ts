@@ -16,6 +16,13 @@ export type OpenRouterOptions = {
   jsonMode?: boolean;
 };
 
+/*
+ * Client-side request timeout: a hanging upstream must fail well before
+ * the platform kills the route (maxDuration = 60s), so the caller receives
+ * a clean, retryable error instead of a gateway timeout.
+ */
+const REQUEST_TIMEOUT_MS = 45_000;
+
 export async function callOpenRouter(
   prompt: string,
   options: OpenRouterOptions = {}
@@ -35,6 +42,12 @@ export async function callOpenRouter(
 
   let response: Response;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT_MS
+  );
+
   try {
     response = await fetch(OPENROUTER_URL, {
       method: "POST",
@@ -44,10 +57,20 @@ export async function callOpenRouter(
         Authorization: `Bearer ${apiKey}`,
       },
 
+      signal: controller.signal,
+
       body: JSON.stringify({
         model: MODEL,
         max_tokens: maxTokens,
         temperature: 0.2,
+
+        /*
+         * The free Nemotron model spends a large, variable share of
+         * max_tokens on hidden reasoning before answering — enough to
+         * truncate (and corrupt) JSON output and stretch calls past 50s.
+         * Disabling it keeps responses fast and within budget.
+         */
+        reasoning: { enabled: false },
 
         messages: [
           {
@@ -71,10 +94,18 @@ export async function callOpenRouter(
           : {}),
       }),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new OpenRouterError(
+        "The AI service took too long to respond. Please try again."
+      );
+    }
+
     throw new OpenRouterError(
       "Could not reach the OpenRouter service."
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!response.ok) {
@@ -103,6 +134,22 @@ export async function callOpenRouter(
   }
 
   const payload = await response.json();
+
+  /*
+   * A JSON-mode response cut off by the token limit is never parseable,
+   * so fail immediately with an accurate message instead of letting the
+   * caller surface a confusing "couldn't be parsed" error. Truncation of
+   * plain-prose responses (chunk summaries, answers) is harmless and
+   * still returned.
+   */
+  if (
+    jsonMode &&
+    payload?.choices?.[0]?.finish_reason === "length"
+  ) {
+    throw new OpenRouterError(
+      "The AI response was cut off before it could be completed. Please try again."
+    );
+  }
 
   const content =
     payload?.choices?.[0]?.message?.content ?? "";

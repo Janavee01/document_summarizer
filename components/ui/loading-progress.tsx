@@ -16,23 +16,23 @@ export function LoadingProgress({
       role="status"
       aria-live="polite"
       aria-label={`${label} ${displayProgress}%`}
-      className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3"
+      className="rounded-lg border border-line bg-paper px-4 py-3"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-zinc-600">{label}</p>
-        <span className="text-xs font-medium text-zinc-500">
+        <p className="text-sm text-ink-soft">{label}</p>
+        <span className="font-mono text-xs font-medium tabular-nums text-ink-faint">
           {displayProgress}%
         </span>
       </div>
 
-      <div
-        className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200"
-        aria-hidden="true"
-      >
+      <div className="scan-track mt-2.5" aria-hidden="true">
         <div
-          className="h-full rounded-full bg-zinc-900 transition-all duration-500 ease-out"
+          className="scan-fill"
           style={{ width: `${displayProgress}%` }}
         />
+        {clampedProgress < 100 && (
+          <div className="scan-sweep" />
+        )}
       </div>
     </div>
   );

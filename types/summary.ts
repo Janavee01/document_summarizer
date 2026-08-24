@@ -8,5 +8,4 @@ export interface Summary {
   mainIdeas: string[];
   entities: string[];
   actionItems: string[];
-  improvementSuggestions: string[];
 }

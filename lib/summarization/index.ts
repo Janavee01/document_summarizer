@@ -57,7 +57,7 @@ Keep only information that is essential for understanding the document.
 Avoid repeating explanations.
 Do not write a full prose summary.
 
-Target approximately 250-400 words.
+Target approximately 150-250 words.
 
 Section ${chunkNumber}:
 
@@ -78,22 +78,16 @@ async function summarizeChunk(
   );
 
   return callOpenRouter(prompt, {
-    maxTokens: 700
+    maxTokens: 500
   });
 }
 
-function buildFinalPrompt(
-  summaries: string[],
-  length: SummaryLength
-): string {
-  return `Create the final structured summary of the document using ONLY the section summaries provided below.
-
-The section summaries represent different parts of the same document. Combine them carefully and remove duplication.
-
-Summary length:
-${LENGTH_GUIDANCE[length]}
-
-Return exactly one JSON object with this structure:
+/*
+ * Shared output contract: field list, requirements, and formatting rules
+ * used by both the single-pass and map-reduce prompts.
+ */
+function buildJsonContract(sourceDescription: string): string {
+  return `Return exactly one JSON object with this structure:
 
 {
   "title": "string",
@@ -113,10 +107,10 @@ Field requirements:
 - keyPoints: 3-6 essential facts or takeaways.
 - mainIdeas: 2-5 high-level themes or arguments.
 - entities: up to 8 notable people, organizations, products, dates, or figures.
-- actionItems: concrete actions, decisions, requirements, or to-dos explicitly supported by the document. Use [] if there are none.
+- actionItems: concrete actions, decisions, requirements, or to-dos explicitly supported by the source material. Use [] if there are none.
 - Do not invent information.
-- Use only information supported by the section summaries.
-- Combine related information across sections.
+- Use only information present in ${sourceDescription}.
+- Combine related information across sections where applicable.
 - Remove repeated information.
 
 Important:
@@ -124,20 +118,86 @@ Important:
 - Do not use markdown.
 - Do not use code fences.
 - Do not include explanations or reasoning.
-- Do not include any text before or after the JSON object.
+- Do not include any text before or after the JSON object.`;
+}
+
+/*
+ * Single-pass prompt used when the whole document fits in one chunk.
+ * It produces the final structured result directly, skipping the
+ * intermediate section-summary round trip entirely and roughly halving
+ * end-to-end latency for typical documents.
+ */
+function buildDirectPrompt(
+  text: string,
+  length: SummaryLength
+): string {
+  return `Summarize the following document accurately.
+
+Summary length:
+${LENGTH_GUIDANCE[length]}
+
+${buildJsonContract("the document below")}
+
+Document:
+
+"""
+${text}
+"""`;
+}
+
+function buildFinalPrompt(
+  summaries: string[],
+  length: SummaryLength
+): string {
+  return `Create the final structured summary of the document using ONLY the section summaries provided below.
+
+The section summaries represent different parts of the same document. Combine them carefully and remove duplication.
+
+Summary length:
+${LENGTH_GUIDANCE[length]}
+
+${buildJsonContract("the section summaries")}
 
 Section summaries:
 
 ${summaries
-  .map(
-    (summary, index) =>
-      `--- Section ${index + 1} ---
+    .map(
+      (summary, index) =>
+        `--- Section ${index + 1} ---
 ${summary}`
-  )
-  .join("\n\n")}
+    )
+    .join("\n\n")}
 `;
 }
 
+/*
+ * Free-tier models intermittently emit malformed JSON even in JSON mode.
+ * A single retry resolves almost all of these without meaningfully
+ * extending worst-case latency (mirrors the QA suggested-questions flow).
+ */
+const STRUCTURED_RESULT_ATTEMPTS = 2;
+
+async function requestStructuredSummary(
+  prompt: string,
+  maxTokens: number
+): Promise<Summary> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < STRUCTURED_RESULT_ATTEMPTS; attempt++) {
+    try {
+      const rawText = await callOpenRouter(prompt, {
+        maxTokens,
+        jsonMode: true,
+      });
+
+      return normalizeSummary(extractJson(rawText));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
 
 function normalizeSummary(parsed: unknown): Summary {
   if (typeof parsed !== "object" || parsed === null) {
@@ -181,10 +241,6 @@ function normalizeSummary(parsed: unknown): Summary {
     entities: toStringArray(data.entities),
 
     actionItems: toStringArray(data.actionItems),
-
-    improvementSuggestions: toStringArray(
-      data.improvementSuggestions
-    ),
   };
 }
 
@@ -203,6 +259,22 @@ export async function generateSummary(
   const chunks = chunkText(trimmedInput);
 
   try {
+    /*
+     * Fast path:
+     * A document that fits in one chunk is summarized in a single LLM
+     * call that produces the structured result directly. The previous
+     * two-step flow (section summary, then aggregation) doubled latency
+     * for every typical-sized upload.
+     */
+    const singleChunk = chunks.length === 1 ? chunks[0] : null;
+
+    if (singleChunk) {
+      return requestStructuredSummary(
+        buildDirectPrompt(singleChunk.text, length),
+        2000
+      );
+    }
+
     /*
      * Step 1:
      * Summarize every chunk in parallel.
@@ -227,21 +299,7 @@ export async function generateSummary(
       length
     );
 
-   const rawText = await callOpenRouter(
-  finalPrompt,
-  {
-    maxTokens: 5000,
-    jsonMode: true,
-  }
-);
-
-    /*
-     * Step 3:
-     * Parse and validate the final JSON.
-     */
-    const parsed = extractJson(rawText);
-
-    return normalizeSummary(parsed);
+    return requestStructuredSummary(finalPrompt, 5000);
   } catch (error) {
     if (error instanceof SummarizationRequestError) {
       throw error;

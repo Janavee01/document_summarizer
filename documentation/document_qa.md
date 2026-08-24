@@ -12,28 +12,160 @@ It uses the **RAG pattern** (Retrieval-Augmented Generation): the document is sp
 
 ## How It Flows
 
-```mermaid
-flowchart TD
-    subgraph setup["STEP 1 — Getting question ideas (happens once, right after summarizing)"]
-        direction TB
-        S[Summary is shown on screen] --> P[A Q&A panel appears below it]
-        P --> X["A sample of the document<br/>(beginning, middle, end) is sent to the AI"]
-        X --> Y["AI comes back with 7 specific questions<br/>about the document"]
-        Y --> Z["Questions show up as chips the user can click"]
-    end
+## How It Flows
 
-    Z --> U
-
-    subgraph ask["STEP 2 — Answering a question (every time the user asks)"]
-        direction TB
-        U{"User clicks a suggested chip<br/>or types their own question"}
-        U --> C1["The document is cut into many small,<br/>slightly overlapping pieces"]
-        C1 --> C2["Each piece is compared against the question;<br/>only the 4 best-matching pieces are kept"]
-        C2 --> A["Those 4 excerpts are sent to the AI<br/>together with the question"]
-        A --> O["AI answers using only what's in the excerpts —<br/>if they don't cover it, it says so honestly"]
-        O --> D["Answer appears right below the question,<br/>ready for the next one"]
-    end
+```text
+┌──────────────────────────────────────┐
+│ Summary is shown on screen           │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│ Q&A panel appears below it           │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│ Sample of document                   │
+│ beginning • middle • end             │
+│ sent to the AI                       │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│ AI generates 7 specific questions    │
+│ about the document                   │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│ Questions appear as clickable chips  │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+        ┌──────────────────────────┐
+        │ User asks a question    │
+        │ • clicks suggested chip │
+        │ • types own question    │
+        └────────────┬─────────────┘
+                     │
+                     ▼
+        ┌──────────────────────────┐
+        │ Document is split into  │
+        │ many small, overlapping  │
+        │ pieces                   │
+        └────────────┬─────────────┘
+                     │
+                     ▼
+        ┌──────────────────────────┐
+        │ Compare every piece     │
+        │ against the question    │
+        └────────────┬─────────────┘
+                     │
+                     ▼
+        ┌──────────────────────────┐
+        │ Keep the 4 best-matching │
+        │ pieces                   │
+        └────────────┬─────────────┘
+                     │
+                     ▼
+        ┌──────────────────────────┐
+        │ Send the 4 excerpts +   │
+        │ question to the AI      │
+        └────────────┬─────────────┘
+                     │
+                     ▼
+        ┌──────────────────────────┐
+        │ AI answers using only   │
+        │ the provided excerpts   │
+        └────────────┬─────────────┘
+                     │
+                     ▼
+        ┌──────────────────────────┐
+        │ Answer appears below    │
+        │ the question             │
+        └────────────┬─────────────┘
+                     │
+                     └───────────────┐
+                                     │
+                                     ▼
+                         ┌─────────────────────┐
+                         │ User asks next      │
+                         │ question            │
+                         └──────────┬──────────┘
+                                    │
+                                    └───────► back to
+                                             "User asks a question"
 ```
+
+### Two-step overview
+
+```text
+STEP 1 — GET QUESTION IDEAS
+─────────────────────────────────────────────────────────────
+
+┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐
+│ Summary   │───►│ Q&A Panel │───►│ Document  │───►│ AI creates │
+│ shown     │    │ appears   │    │ sample    │    │ 7 questions│
+└───────────┘    └───────────┘    └───────────┘    └─────┬─────┘
+                                                         │
+                                                         ▼
+                                                   ┌───────────┐
+                                                   │ Question  │
+                                                   │ chips     │
+                                                   └─────┬─────┘
+                                                         │
+                                                         ▼
+
+
+STEP 2 — ANSWER A QUESTION
+─────────────────────────────────────────────────────────────
+
+┌─────────────┐
+│ User asks   │
+│ question    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Split       │
+│ document    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Find best   │
+│ matching    │
+│ pieces      │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Keep top 4  │
+│ excerpts    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Send to AI  │
+│ + question  │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ AI answers  │
+│ from only   │
+│ those 4     │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Show answer │
+└──────┬──────┘
+       │
+       └──────────────────────► NEXT QUESTION
+```
+
 
 ## Approach
 

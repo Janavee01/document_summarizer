@@ -63,7 +63,7 @@ export function ExportButtons({ summary, meta, className }: ExportButtonsProps) 
   };
 
   const buttonClassName =
-    "flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2";
+    "flex items-center gap-1.5 rounded-lg border border-line bg-paper-raised px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-teal/40 hover:text-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2";
 
   return (
     <div className={cn("flex flex-col items-start gap-1.5", className)}>
@@ -72,7 +72,7 @@ export function ExportButtons({ summary, meta, className }: ExportButtonsProps) 
         aria-label="Export summary"
         className="flex flex-wrap items-center gap-2"
       >
-        <span className="flex items-center gap-1 text-xs font-medium text-zinc-500">
+        <span className="flex items-center gap-1 font-mono text-xs font-medium uppercase tracking-wide text-ink-faint">
           <FileDown aria-hidden="true" className="h-3.5 w-3.5" />
           Export
         </span>
@@ -105,7 +105,7 @@ export function ExportButtons({ summary, meta, className }: ExportButtonsProps) 
       </div>
 
       {failedFormat && (
-        <p role="alert" className="flex items-center gap-1 text-xs text-red-600">
+        <p role="alert" className="flex items-center gap-1 text-xs text-danger">
           <AlertCircle aria-hidden="true" className="h-3 w-3 shrink-0" />
           Could not export {failedFormat}. Please try again.
         </p>

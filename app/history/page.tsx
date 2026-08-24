@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Eye,
   EyeOff,
-  FileText,
   History,
   Inbox,
   Sparkles,
@@ -76,26 +75,19 @@ export default function HistoryPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-zinc-50 px-4 py-10 font-sans text-zinc-950">
+    <main className="flex min-h-screen items-start justify-center px-4 py-10 sm:py-14">
       <section className="w-full max-w-3xl">
-        <div className="mb-7 text-center">
-          <p className="mb-2 flex items-center justify-center gap-1.5 text-sm font-medium text-zinc-500">
-            <History aria-hidden="true" className="h-4 w-4" />
+        <div className="mb-8 text-center">
+          <span className="stamp text-brass">
+            <History aria-hidden="true" className="h-3 w-3" />
             Dashboard
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          </span>
+          <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
             Summary history
           </h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-soft">
             Every summary you generate is saved here on this device.
           </p>
-          <Link
-            href="/"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
-          >
-            <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
-            New summary
-          </Link>
         </div>
 
         {stats && (
@@ -115,28 +107,28 @@ export default function HistoryPage() {
           <div
             role="status"
             aria-live="polite"
-            className="flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-8 text-sm text-zinc-600 shadow-sm"
+            className="flex items-center justify-center gap-2 card-index px-4 py-8 text-sm text-ink-soft"
           >
             Loading your summaries…
           </div>
         )}
 
         {entries !== null && entries.length === 0 && (
-          <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center shadow-sm">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200">
+          <div className="card-index border-dashed px-6 py-12 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-soft text-teal">
               <Inbox aria-hidden="true" className="h-6 w-6" />
             </div>
-            <p className="mt-4 text-sm font-medium text-zinc-900">
+            <p className="mt-4 font-display text-base font-semibold text-ink">
               No summaries yet
             </p>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mx-auto mt-1 max-w-xs text-sm text-ink-soft">
               Upload a document to generate your first summary.
             </p>
             <Link
               href="/"
-              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
             >
-              <FileText aria-hidden="true" className="h-4 w-4" />
+              <Sparkles aria-hidden="true" className="h-4 w-4" />
               Summarize a document
             </Link>
           </div>
@@ -155,7 +147,12 @@ export default function HistoryPage() {
               return (
                 <li
                   key={entry.id}
-                  className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm"
+                  className={cn(
+                    "overflow-hidden rounded-xl border bg-paper-raised transition-shadow",
+                    isExpanded
+                      ? "border-teal/30 shadow-md"
+                      : "border-line shadow-sm"
+                  )}
                 >
                   <div className="px-4 py-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -164,25 +161,25 @@ export default function HistoryPage() {
                           type="button"
                           onClick={() => handleToggleExpand(entry.id)}
                           aria-expanded={isExpanded}
-                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 rounded-md"
+                          className="w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
                         >
-                          <p className="truncate text-sm font-semibold text-zinc-900">
+                          <p className="truncate font-display text-sm font-semibold text-ink">
                             {entry.summary.title}
                           </p>
                         </button>
 
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs uppercase tracking-wide text-ink-faint">
+                          <span className="rounded-full border border-line bg-paper px-2 py-0.5 normal-case tracking-normal text-ink-soft">
                             {entry.summary.documentType}
                           </span>
-                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600">
+                          <span className="rounded-full border border-line bg-paper px-2 py-0.5 normal-case tracking-normal text-ink-soft">
                             {LENGTH_LABELS[entry.length]}
                           </span>
                           <span>{formatExportDate(entry.createdAt)}</span>
                           {entry.fileName && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <span className="max-w-[14rem] truncate">
+                              <span className="max-w-[14rem] truncate normal-case tracking-normal">
                                 {entry.fileName}
                               </span>
                             </>
@@ -190,7 +187,7 @@ export default function HistoryPage() {
                           {entry.sourceWordCount !== null && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <span>
+                              <span className="normal-case tracking-normal">
                                 {entry.sourceWordCount.toLocaleString()} words
                               </span>
                             </>
@@ -208,7 +205,7 @@ export default function HistoryPage() {
                               ? "Collapse summary"
                               : "View full summary"
                           }
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-paper text-ink-soft transition-colors hover:border-teal/40 hover:text-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
                         >
                           {isExpanded ? (
                             <EyeOff aria-hidden="true" className="h-4 w-4" />
@@ -225,10 +222,10 @@ export default function HistoryPage() {
                               : "Delete summary"
                           }
                           className={cn(
-                            "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2",
+                            "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2",
                             isConfirmingDelete
-                              ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
-                              : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-red-600"
+                              ? "border-danger/40 bg-danger-soft text-danger"
+                              : "border-line bg-paper text-ink-soft hover:border-danger/40 hover:bg-danger-soft hover:text-danger"
                           )}
                         >
                           <Trash2 aria-hidden="true" className="h-4 w-4" />
@@ -238,13 +235,13 @@ export default function HistoryPage() {
                     </div>
 
                     {!isExpanded && (
-                      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-zinc-600">
+                      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-ink-soft">
                         {snippet}
                       </p>
                     )}
 
                     {isExpanded && (
-                      <div className="mt-4 space-y-4 border-t border-zinc-100 pt-4">
+                      <div className="mt-4 space-y-4 border-t border-line pt-4">
                         <SummaryView
                           summary={entry.summary}
                           headerAction={
@@ -283,14 +280,14 @@ function StatCard({
   isText?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-      <p className="flex items-center gap-1 text-xs font-medium text-zinc-500">
+    <div className="card-index px-4 py-3">
+      <p className="flex items-center gap-1 font-mono text-xs font-medium uppercase tracking-wide text-ink-faint">
         {icon}
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 font-semibold text-zinc-900",
+          "mt-1 font-display font-semibold text-ink",
           isText ? "text-sm leading-6" : "text-xl"
         )}
       >

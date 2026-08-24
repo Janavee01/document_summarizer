@@ -25,13 +25,13 @@ function BrandMark() {
   return (
     <Link
       href="/"
-      className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+      className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
       aria-label="Document Intelligence home"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal text-white">
         <ScanText aria-hidden="true" className="h-5 w-5" />
       </span>
-      <span className="text-base font-semibold tracking-tight text-zinc-900">
+      <span className="font-display text-base font-semibold tracking-tight text-ink">
         Document Intelligence
       </span>
     </Link>
@@ -57,10 +57,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2",
+              "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2",
               isActive
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                ? "border-teal/25 bg-teal-soft text-teal"
+                : "border-transparent text-ink-soft hover:border-line hover:bg-paper-raised hover:text-ink"
             )}
           >
             <Icon aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
@@ -69,7 +69,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               <span
                 className={cn(
                   "block truncate text-xs font-normal",
-                  isActive ? "text-zinc-300" : "text-zinc-400"
+                  isActive ? "text-teal/80" : "text-ink-faint"
                 )}
               >
                 {item.description}
@@ -114,14 +114,14 @@ export function SiteSidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-paper/90 px-4 py-3 backdrop-blur lg:hidden">
         <BrandMark />
         <button
           type="button"
           onClick={() => setIsOpen(true)}
           aria-label="Open navigation menu"
           aria-expanded={isOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-paper-raised text-ink transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
         >
           <Menu aria-hidden="true" className="h-5 w-5" />
         </button>
@@ -139,22 +139,22 @@ export function SiteSidebar() {
           type="button"
           aria-label="Close navigation menu"
           onClick={() => setIsOpen(false)}
-          className="absolute inset-0 h-full w-full bg-zinc-950/40"
+          className="absolute inset-0 h-full w-full bg-ink/40"
         />
 
         <aside
           className={cn(
-            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-zinc-200 bg-white transition-transform duration-200 ease-out",
+            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-line bg-paper transition-transform duration-200 ease-out",
             isOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <BrandMark />
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               aria-label="Close navigation menu"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-paper-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
@@ -164,15 +164,15 @@ export function SiteSidebar() {
             <NavLinks onNavigate={() => setIsOpen(false)} />
           </div>
 
-          <p className="border-t border-zinc-200 px-4 py-3 text-xs leading-relaxed text-zinc-500">
+          <p className="border-t border-line px-4 py-3 text-xs leading-relaxed text-ink-faint">
             Summaries are stored privately on this device.
           </p>
         </aside>
       </div>
 
       {/* Desktop vertical rail */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-zinc-200 bg-white lg:flex">
-        <div className="border-b border-zinc-200 px-4 py-4">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-paper lg:flex">
+        <div className="border-b border-line px-4 py-4">
           <BrandMark />
         </div>
 
@@ -180,7 +180,7 @@ export function SiteSidebar() {
           <NavLinks />
         </div>
 
-        <p className="border-t border-zinc-200 px-4 py-3 text-xs leading-relaxed text-zinc-500">
+        <p className="border-t border-line px-4 py-3 text-xs leading-relaxed text-ink-faint">
           Summaries are stored privately on this device.
         </p>
       </aside>

@@ -5,6 +5,8 @@
  * embedding service needed — good enough for grounding QA answers.
  */
 
+import { findNaturalBreak } from "@/lib/text-splitting";
+
 const CHUNK_CHARACTERS = 1_200;
 const CHUNK_OVERLAP = 200;
 const MAX_CHUNKS = 400;
@@ -77,18 +79,7 @@ function splitIntoChunks(text: string): string[] {
         end - 600
       );
 
-      const paragraphBreak = trimmed.lastIndexOf("\n\n", end);
-      const sentenceBreak = Math.max(
-        trimmed.lastIndexOf(". ", end),
-        trimmed.lastIndexOf("? ", end),
-        trimmed.lastIndexOf("! ", end)
-      );
-
-      if (paragraphBreak >= searchStart) {
-        end = paragraphBreak;
-      } else if (sentenceBreak >= searchStart) {
-        end = sentenceBreak + 1;
-      }
+      end = findNaturalBreak(trimmed, end, searchStart);
     }
 
     const chunk = trimmed.slice(start, end).trim();

@@ -26,8 +26,8 @@ export default function GlobalError({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#fafafa",
-          color: "#18181b",
+          backgroundColor: "#f2efe6",
+          color: "#21201c",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
         }}
@@ -38,9 +38,9 @@ export default function GlobalError({
             maxWidth: "28rem",
             width: "100%",
             padding: "2rem",
-            border: "1px solid #e4e4e7",
+            border: "1px solid #dcd6c4",
             borderRadius: "0.75rem",
-            backgroundColor: "#ffffff",
+            backgroundColor: "#fbfaf5",
             boxSizing: "border-box",
           }}
         >
@@ -53,7 +53,7 @@ export default function GlobalError({
               marginBottom: 0,
               fontSize: "0.875rem",
               lineHeight: 1.5,
-              color: "#52525b",
+              color: "#56534a",
             }}
           >
             The application hit an unexpected error. Please try again — if the
@@ -66,7 +66,7 @@ export default function GlobalError({
                 marginBottom: 0,
                 fontFamily: "ui-monospace, monospace",
                 fontSize: "0.75rem",
-                color: "#a1a1aa",
+                color: "#8a8677",
               }}
             >
               Error ID: {error.digest}
@@ -81,10 +81,10 @@ export default function GlobalError({
               padding: "0.625rem 1rem",
               border: "none",
               borderRadius: "0.5rem",
-              backgroundColor: "#18181b",
+              backgroundColor: "#2b6e6e",
               color: "#ffffff",
               fontSize: "0.875rem",
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >

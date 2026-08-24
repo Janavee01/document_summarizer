@@ -117,7 +117,6 @@ export function buildSummaryPdf(
     { title: "Key Points", items: summary.keyPoints },
     { title: "Main Ideas", items: summary.mainIdeas },
     { title: "Action Items", items: summary.actionItems },
-    { title: "Improvement Suggestions", items: summary.improvementSuggestions },
   ].filter((section) => section.items.length > 0);
 
   for (const section of sections) {

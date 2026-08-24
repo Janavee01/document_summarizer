@@ -215,16 +215,18 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
   };
 
   return (
-    <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+    <div className="mt-6 overflow-hidden rounded-xl border border-line bg-paper-raised">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-700 ring-1 ring-zinc-200">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-soft text-teal">
             <Sparkles aria-hidden="true" className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-medium text-zinc-900">Summary</p>
-            <p className="text-xs text-zinc-500">
-              Generate a smart summary of your document.
+            <p className="font-display text-sm font-semibold text-ink">
+              Summary
+            </p>
+            <p className="text-xs text-ink-faint">
+              A smart summary of your document.
             </p>
           </div>
         </div>
@@ -232,7 +234,7 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
         <div
           role="group"
           aria-label="Summary length"
-          className="inline-flex rounded-lg border border-zinc-200 bg-white p-0.5"
+          className="inline-flex rounded-lg border border-line bg-paper p-0.5"
         >
           {LENGTH_OPTIONS.map((option) => (
             <button
@@ -244,10 +246,10 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
               }
               aria-pressed={length === option.value}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal disabled:cursor-not-allowed disabled:opacity-50",
                 length === option.value
-                  ? "bg-zinc-900 text-white"
-                  : "text-zinc-600 hover:bg-zinc-100"
+                  ? "bg-teal text-white"
+                  : "text-ink-soft hover:bg-teal-soft hover:text-teal"
               )}
             >
               {option.label}
@@ -262,19 +264,19 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
             {phase === "error" && errorMessage && (
               <div
                 role="alert"
-                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+                className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3"
               >
                 <AlertCircle
                   aria-hidden="true"
-                  className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-danger"
                 />
-                <p className="text-sm text-red-700">{errorMessage}</p>
+                <p className="text-sm text-danger">{errorMessage}</p>
               </div>
             )}
             <button
               type="button"
               onClick={() => runPipeline(length)}
-              className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+              className="w-full rounded-lg bg-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
             >
               {phase === "error" ? "Try again" : "Generate summary"}
             </button>
@@ -305,10 +307,10 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
       type="button"
       onClick={handleCopySummary}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2",
+        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2",
         copyStatus === "copied"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+          ? "border-teal/30 bg-teal-soft text-teal"
+          : "border-line bg-paper-raised text-ink-soft hover:border-teal/40 hover:text-teal"
       )}
     >
       {copyStatus === "copied" ? (
@@ -328,7 +330,7 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
       type="button"
       onClick={handleGenerateLink}
       aria-expanded={shareUrl !== null}
-      className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+      className="rounded-lg border border-line bg-paper-raised px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-teal/40 hover:text-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
     >
       Share
     </button>
@@ -336,7 +338,7 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
     <button
       type="button"
       onClick={() => runPipeline(length)}
-      className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+      className="rounded-lg border border-line bg-paper-raised px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-teal/40 hover:text-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
     >
       Regenerate
     </button>
@@ -344,7 +346,7 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
 }
           >
             {shareUrl && (
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+              <div className="rounded-lg border border-teal/25 bg-teal-soft/60 p-3">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -352,16 +354,16 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
                     value={shareUrl}
                     onFocus={(event) => event.target.select()}
                     aria-label="Shareable summary link"
-                    className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-1"
+                    className="min-w-0 flex-1 rounded-md border border-line bg-paper-raised px-2.5 py-1.5 font-mono text-xs text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
                   />
                   <button
                     type="button"
                     onClick={handleCopy}
                     className={cn(
-                      "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2",
+                      "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2",
                       copyStatus === "copied"
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800"
+                        ? "bg-teal text-white"
+                        : "bg-teal text-white hover:bg-teal/90"
                     )}
                   >
                     {copyStatus === "copied" ? (
@@ -380,12 +382,12 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
                     type="button"
                     onClick={() => setShareUrl(null)}
                     aria-label="Hide share link"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-paper-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-zinc-500">
+                <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-ink-soft">
                   <Link2
                     aria-hidden="true"
                     className="mt-0.5 h-3 w-3 shrink-0"

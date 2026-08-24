@@ -31,7 +31,6 @@ function makeSummary(): Summary {
     mainIdeas: ["idea"],
     entities: [],
     actionItems: [],
-    improvementSuggestions: [],
   };
 }
 

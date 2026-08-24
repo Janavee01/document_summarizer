@@ -21,7 +21,6 @@ export function isSummary(value: unknown): value is Summary {
     isStringArray(candidate.keyPoints) &&
     isStringArray(candidate.mainIdeas) &&
     isStringArray(candidate.entities) &&
-    isStringArray(candidate.actionItems) &&
-    isStringArray(candidate.improvementSuggestions)
+    isStringArray(candidate.actionItems)
   );
 }

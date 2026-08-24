@@ -4,10 +4,12 @@ import { useRef, useState } from "react";
 import {
   FileText,
   Image as ImageIcon,
+  ScanText,
   Sparkles,
   Upload,
   X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   formatFileSize,
   getFileTypeLabel,
@@ -15,6 +17,12 @@ import {
   validateFile,
 } from "@/lib/file-validation";
 import { SummaryPanel } from "@/components/summary/summary-panel";
+
+const FEATURES = [
+  { icon: FileText, label: "PDF & images" },
+  { icon: Sparkles, label: "AI key points" },
+  { icon: ScanText, label: "Ask questions" },
+];
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +126,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-zinc-50 px-4 py-10 font-sans text-zinc-950">
+    <main className="flex min-h-screen items-start justify-center px-4 py-10 sm:py-16">
       <input
         ref={inputRef}
         type="file"
@@ -127,39 +135,41 @@ export default function Home() {
         className="sr-only"
       />
       <section className="w-full max-w-2xl">
-        <div className="mb-7 text-center">
-          <p className="mb-2 text-sm font-medium text-zinc-500">
-            Document Summarizer
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Upload a document
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">
-            Upload a PDF or image and get an instant summary.
-          </p>
-        </div>
+        {!selectedFile && (
+          <header className="mb-9 text-center">
+            <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
+              Turn any document into a
+              <br className="hidden sm:block" /> clear summary
+            </h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-ink-soft sm:text-base">
+              Drop in a PDF or an image and get the key points, main ideas,
+              and action items in seconds — then ask questions about the
+              document.
+            </p>
+          </header>
+        )}
 
         {selectedFile ? (
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="card-index p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {imagePreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- ephemeral blob: preview; next/image cannot optimize these
                 <img
                   src={imagePreviewUrl}
                   alt=""
-                  className="h-14 w-14 shrink-0 rounded-lg border border-zinc-200 object-cover"
+                  className="h-14 w-14 shrink-0 rounded-lg border border-line object-cover"
                 />
               ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-700 ring-1 ring-zinc-200">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-teal-soft text-teal">
                   <FileText aria-hidden="true" className="h-7 w-7" />
                 </div>
               )}
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-900">
+                <p className="truncate text-sm font-semibold text-ink">
                   {selectedFile.name}
                 </p>
-                <p className="mt-1 truncate text-sm text-zinc-500">
+                <p className="mt-1 truncate font-mono text-xs uppercase tracking-wide text-ink-faint">
                   {getFileTypeLabel(selectedFile)} ·{" "}
                   {formatFileSize(selectedFile.size)}
                 </p>
@@ -169,15 +179,15 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={openFilePicker}
-                  className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 sm:flex-none"
+                  className="rounded-lg border border-line bg-paper-raised px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
                 >
-                  Choose another file
+                  Replace file
                 </button>
                 <button
                   type="button"
                   onClick={removeFile}
                   aria-label="Remove selected file"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-transparent text-ink-faint transition-colors hover:border-line hover:bg-paper hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
                 >
                   <X aria-hidden="true" className="h-5 w-5" />
                 </button>
@@ -187,49 +197,77 @@ export default function Home() {
             <SummaryPanel key={selectionCount} file={selectedFile} />
           </div>
         ) : (
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Choose a document to upload"
-            onClick={openFilePicker}
-            onKeyDown={handleKeyDown}
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center outline-none transition-colors sm:p-12 ${
-              isDragActive
-                ? "border-zinc-900 bg-zinc-100"
-                : error
-                  ? "border-red-300 bg-red-50/40 hover:border-red-400"
-                  : "border-zinc-300 bg-white hover:border-zinc-400 hover:bg-zinc-50"
-            } focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2`}
-          >
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200">
-              {isDragActive ? (
-                <Upload aria-hidden="true" className="h-6 w-6" />
-              ) : (
-                <ImageIcon aria-hidden="true" className="h-6 w-6" />
+          <>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Choose a document to upload"
+              onClick={openFilePicker}
+              onKeyDown={handleKeyDown}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                "card-index cursor-pointer border-2 border-dashed px-8 py-12 text-center outline-none transition-all duration-200 sm:px-12",
+                isDragActive
+                  ? "-translate-y-0.5 border-teal bg-teal-soft shadow-md"
+                  : error
+                    ? "border-danger/50 bg-danger-soft/40 hover:border-danger"
+                    : "border-line hover:-translate-y-0.5 hover:border-teal/60 hover:shadow-md"
               )}
+            >
+              <div
+                className={cn(
+                  "mx-auto flex h-14 w-14 items-center justify-center rounded-full transition-colors",
+                  isDragActive
+                    ? "bg-teal text-white"
+                    : "bg-teal-soft text-teal"
+                )}
+              >
+                {isDragActive ? (
+                  <Upload aria-hidden="true" className="h-7 w-7" />
+                ) : (
+                  <ImageIcon aria-hidden="true" className="h-7 w-7" />
+                )}
+              </div>
+
+              <p className="mt-5 text-base font-semibold text-ink">
+                {isDragActive
+                  ? "Drop your file to begin"
+                  : "Drop a file here, or click to browse"}
+              </p>
+              <p className="mt-1.5 font-mono text-xs uppercase tracking-wide text-ink-faint">
+                PDF · PNG · JPG · up to 10 MB
+              </p>
             </div>
-            <p className="mt-4 text-sm font-medium text-zinc-900">
-              {isDragActive
-                ? "Drop your file here"
-                : "Drop a file here or click to browse"}
-            </p>
-            <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-zinc-500">
-              <Sparkles aria-hidden="true" className="h-3 w-3" />
-              PDF, PNG, JPG, or JPEG · Max 10 MB · Summaries are saved to your
-              history
-            </p>
-          </div>
+
+            <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+              {FEATURES.map(({ icon: Icon, label }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-1.5 text-xs font-medium text-ink-soft"
+                >
+                  <Icon aria-hidden="true" className="h-3.5 w-3.5 text-teal" />
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         {error && !selectedFile && (
-          <p role="alert" className="mt-3 text-center text-sm font-medium text-red-600">
+          <p
+            role="alert"
+            className="mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-2.5 text-center text-sm font-medium text-danger"
+          >
             {error}
           </p>
         )}
+
+        <p className="mt-8 text-center text-xs text-ink-faint">
+          Summaries are saved privately to this device.
+        </p>
       </section>
     </main>
   );

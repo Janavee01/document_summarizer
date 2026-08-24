@@ -56,7 +56,6 @@ export function parseShareLink(hash: string): Summary | null {
       mainIdeas: parsed.mainIdeas,
       entities: parsed.entities,
       actionItems: parsed.actionItems,
-      improvementSuggestions: parsed.improvementSuggestions,
     };
   } catch {
     return null;

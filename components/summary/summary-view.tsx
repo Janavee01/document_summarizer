@@ -18,8 +18,10 @@ export function SummaryView({
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-zinc-900">{summary.title}</p>
-          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+          <h2 className="font-display text-lg font-semibold leading-snug tracking-tight text-ink">
+            {summary.title}
+          </h2>
+          <span className="stamp mt-2 text-brass">
             <Tag aria-hidden="true" className="h-3 w-3" />
             {summary.documentType}
           </span>
@@ -33,7 +35,7 @@ export function SummaryView({
 
       {children}
 
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-800">
+      <p className="whitespace-pre-wrap rounded-lg border border-line bg-paper px-4 py-3 text-sm leading-relaxed text-ink">
         {summary.summary}
       </p>
 
@@ -63,7 +65,7 @@ export function SummaryView({
 
       {summary.entities.length > 0 && (
         <div>
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+          <p className="mb-2 flex items-center gap-1.5 font-mono text-xs font-medium uppercase tracking-wide text-ink-faint">
             <Tag aria-hidden="true" className="h-3.5 w-3.5" />
             Mentioned
           </p>
@@ -71,7 +73,7 @@ export function SummaryView({
             {summary.entities.map((entity) => (
               <span
                 key={entity}
-                className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs text-zinc-700"
+                className="rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs text-ink-soft"
               >
                 {entity}
               </span>
@@ -93,8 +95,8 @@ function SummarySection({
   items: string[];
 }) {
   return (
-    <div>
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+    <div className="rounded-lg border border-line bg-paper px-4 py-3">
+      <p className="mb-2 flex items-center gap-1.5 font-mono text-xs font-medium uppercase tracking-wide text-teal">
         {icon}
         {title}
       </p>
@@ -102,9 +104,12 @@ function SummarySection({
         {items.map((item) => (
           <li
             key={item}
-            className="flex items-start gap-2 text-sm leading-relaxed text-zinc-800"
+            className="flex items-start gap-2 text-sm leading-relaxed text-ink"
           >
-            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-zinc-400" />
+            <span
+              aria-hidden="true"
+              className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full border border-teal/60 bg-teal-soft"
+            />
             {item}
           </li>
         ))}

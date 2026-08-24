@@ -126,16 +126,6 @@ export function buildPlainTextExport(
     sections.push(summary.entities.join(", "));
   }
 
-  if (summary.improvementSuggestions.length > 0) {
-    sections.push("");
-    sections.push("IMPROVEMENT SUGGESTIONS");
-    sections.push("-".repeat(60));
-
-    for (const item of summary.improvementSuggestions) {
-      sections.push(`• ${item}`);
-    }
-  }
-
   return `${sections.join("\n")}\n`;
 }
 
@@ -182,16 +172,6 @@ export function buildMarkdownExport(
     sections.push("## Mentioned");
     sections.push("");
     sections.push(summary.entities.map((entity) => `\`${entity}\``).join(" · "));
-  }
-
-  if (summary.improvementSuggestions.length > 0) {
-    sections.push("");
-    sections.push("## Improvement Suggestions");
-    sections.push("");
-
-    for (const item of summary.improvementSuggestions) {
-      sections.push(`- ${item}`);
-    }
   }
 
   return `${sections.join("\n")}\n`;
