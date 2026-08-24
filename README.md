@@ -6,8 +6,6 @@ A full-stack document intelligence application that extracts text from PDFs and 
 
 ## Screenshots
 
-### Frontend UI & Summary History
-
 <table>
 <tr>
 <td align="center" width="50%">
@@ -26,8 +24,6 @@ A full-stack document intelligence application that extracts text from PDFs and 
 </td>
 </tr>
 </table>
-
-### Q&A & Summary
 
 <table>
 <tr>
