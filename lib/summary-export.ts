@@ -49,6 +49,30 @@ function collectSections(summary: Summary) {
   ].filter((section) => section.items.length > 0);
 }
 
+/*
+ * Compact rendering for the "Copy" action. Shares its section collection
+ * with the export builders so copy output follows any section changes.
+ */
+export function buildClipboardText(summary: Summary): string {
+  const lines: string[] = [
+    summary.title,
+    `Document Type: ${summary.documentType}`,
+    "",
+    "Summary",
+    summary.summary,
+  ];
+
+  for (const section of collectSections(summary)) {
+    lines.push("", section.title, ...section.items.map((item) => `• ${item}`));
+  }
+
+  if (summary.entities.length > 0) {
+    lines.push("", "Mentioned", summary.entities.join(", "));
+  }
+
+  return lines.join("\n");
+}
+
 function metaLines(summary: Summary, meta: ExportMeta): string[] {
   const lines: string[] = [];
 

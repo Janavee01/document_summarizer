@@ -56,3 +56,47 @@ export async function recognizeWithWorker(
  * Creates a reusable Tesseract worker for multi-page OCR.
  */
 export { createOcrWorker };
+
+/*
+ * Each worker owns a separate WASM instance, so the pool size is
+ * deliberately small: enough for meaningful speedup on multi-page
+ * documents without multiplying memory usage.
+ */
+const MAX_OCR_WORKERS = 4;
+
+/**
+ * Creates a pool of Tesseract workers for parallel page recognition.
+ *
+ * Requesting more workers than MAX_OCR_WORKERS is clamped; requesting
+ * fewer yields exactly that many (minimum one).
+ */
+export async function createOcrWorkerPool(
+  requestedSize: number,
+): Promise<Worker[]> {
+  const size = Math.max(1, Math.min(requestedSize, MAX_OCR_WORKERS));
+
+  const workers: Worker[] = [];
+
+  try {
+    for (let i = 0; i < size; i++) {
+      workers.push(await createOcrWorker());
+    }
+  } catch (error) {
+    await Promise.allSettled(
+      workers.map((worker) => worker.terminate()),
+    );
+    throw error;
+  }
+
+  return workers;
+}
+
+/**
+ * Terminates every worker in a pool, ignoring individual failures so
+ * one stuck worker cannot prevent the others from being cleaned up.
+ */
+export async function terminateOcrWorkers(workers: Worker[]): Promise<void> {
+  await Promise.allSettled(
+    workers.map((worker) => worker.terminate()),
+  );
+}

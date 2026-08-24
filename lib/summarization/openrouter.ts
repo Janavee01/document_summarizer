@@ -23,7 +23,6 @@ export async function callOpenRouter(
   const apiKey = process.env.AI_API_KEY;
 
   if (!apiKey) {
-  
     throw new OpenRouterError(
       "AI_API_KEY is not configured on the server."
     );
@@ -79,27 +78,29 @@ export async function callOpenRouter(
   }
 
   if (!response.ok) {
-  let detail = "";
+    let detail = "";
 
-  try {
-    const errorBody = await response.json();
-    detail = errorBody?.error?.message ?? "";
+    try {
+      const errorBody = await response.json();
+      detail = errorBody?.error?.message ?? "";
 
-    console.error("OpenRouter status:", response.status);
-    console.error("OpenRouter error body:", errorBody);
-    console.error("OpenRouter error detail:", detail);
-  } catch {
-    console.error(
-      "OpenRouter returned an error, but the error body could not be parsed."
+      console.error("OpenRouter status:", response.status);
+      console.error("OpenRouter error body:", errorBody);
+      console.error("OpenRouter error detail:", detail);
+    } catch {
+      console.error(
+        "OpenRouter returned an error, but the error body could not be parsed."
+      );
+    }
+
+    /*
+     * The provider's raw detail is logged above but deliberately not
+     * forwarded to the client — it can expose internal model/route info.
+     */
+    throw new OpenRouterError(
+      `The AI service returned an error (status ${response.status}). Please try again.`
     );
   }
-
-  throw new OpenRouterError(
-    detail
-      ? `OpenRouter error: ${detail}`
-      : `OpenRouter returned status ${response.status}.`
-  );
-}
 
   const payload = await response.json();
 

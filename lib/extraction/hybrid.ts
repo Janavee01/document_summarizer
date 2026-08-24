@@ -1,5 +1,8 @@
 import { PDFParse } from "pdf-parse";
-import { createWorker } from "tesseract.js";
+import {
+  createOcrWorkerPool,
+  terminateOcrWorkers,
+} from "./ocr";
 import { normalizeExtractedText } from "./text-normalization";
 import { extractPdfPageTexts } from "./pdf-pages";
 import { analyzeTextQuality } from "./text-quality";
@@ -94,7 +97,7 @@ export async function extractHybridPdfText(
     data: buffer,
   });
 
-  const worker = await createWorker("eng");
+  const ocrWorkers = await createOcrWorkerPool(pagesNeedingOcr.length);
 
   try {
     /*
@@ -109,18 +112,25 @@ export async function extractHybridPdfText(
 
     const ocrByPage = new Map<number, string>();
 
-    for (const page of screenshots.pages) {
-      const {
-        data: { text },
-      } = await worker.recognize(
-        Buffer.from(page.data),
-      );
+    /*
+     * Pages are distributed round-robin across the worker pool; each
+     * worker processes its share sequentially, so recognitions run in
+     * parallel across workers without contending for a single one.
+     */
+    await Promise.all(
+      screenshots.pages.map((page, position) => {
+        const worker = ocrWorkers[position % ocrWorkers.length];
 
-      ocrByPage.set(
-        page.pageNumber,
-        normalizeExtractedText(text ?? ""),
-      );
-    }
+        return worker
+          .recognize(Buffer.from(page.data))
+          .then(({ data }) => {
+            ocrByPage.set(
+              page.pageNumber,
+              normalizeExtractedText(data.text ?? ""),
+            );
+          });
+      }),
+    );
 
     const pages: HybridPageResult[] =
       pageTextResult.pages.map((page) => {
@@ -153,7 +163,7 @@ export async function extractHybridPdfText(
       pages,
     };
   } finally {
-    await worker.terminate();
+    await terminateOcrWorkers(ocrWorkers);
     await parser.destroy();
   }
 }

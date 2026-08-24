@@ -43,24 +43,62 @@ Document Summarizer is a web application that accepts PDF and image documents, e
 ```text
 document_summarizer/
 ├── app/
-│   ├── api/extract/route.ts
+│   ├── api/
+│   │   ├── extract/route.ts
+│   │   ├── qa/
+│   │   │   ├── answer/route.ts
+│   │   │   └── questions/route.ts
+│   │   └── summarize/route.ts
+│   ├── error.tsx
+│   ├── global-error.tsx
 │   ├── globals.css
+│   ├── history/page.tsx
 │   ├── layout.tsx
-│   └── page.tsx
-├── components/upload/document-reader.tsx
+│   ├── page.tsx
+│   └── s/page.tsx
+├── components/
+│   ├── site-sidebar.tsx
+│   ├── summary/
+│   │   ├── document-qa.tsx
+│   │   ├── export-buttons.tsx
+│   │   ├── summary-panel.tsx
+│   │   └── summary-view.tsx
+│   └── ui/
+│       ├── button.tsx
+│       ├── loading-progress.tsx
+│       └── utils.ts
 ├── lib/
 │   ├── extraction/
+│   │   ├── hybrid.ts
 │   │   ├── index.ts
 │   │   ├── ocr.ts
-│   │   └── pdf.ts
-│   └── file-validation.ts
+│   │   ├── pdf-pages.ts
+│   │   ├── pdf.ts
+│   │   ├── text-normalization.ts
+│   │   └── text-quality.ts
+│   ├── qa/
+│   │   ├── index.ts
+│   │   └── retrieval.ts
+│   ├── summarization/
+│   │   ├── chunking.ts
+│   │   ├── index.ts
+│   │   ├── json-utils.ts
+│   │   └── openrouter.ts
+│   ├── clipboard.ts
+│   ├── file-validation.ts
+│   ├── history.ts
+│   ├── share.ts
+│   ├── summary-export.ts
+│   ├── summary-pdf.ts
+│   ├── summary-validation.ts
+│   ├── use-creeping-progress.ts
+│   └── utils.ts
 ├── types/
 │   ├── document.ts
 │   └── summary.ts
 ├── public/
 ├── .env.example
 ├── README.md
-├── DOCUMENTATION.md
 ├── package.json
 ├── next.config.ts
 ├── tsconfig.json

@@ -45,13 +45,6 @@ function buildContentStream(ops: TextOp[]): string {
   return parts.join("\n");
 }
 
-function escapePdfString(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
-}
-
 function buildPdf(pageContents: string[]): Buffer {
   const objects: string[] = [];
   const pageCount = pageContents.length;

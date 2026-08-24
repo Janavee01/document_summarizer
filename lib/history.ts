@@ -1,4 +1,5 @@
 import type { Summary, SummaryLength } from "@/types/summary";
+import { isSummary } from "@/lib/summary-validation";
 
 export interface HistoryEntry {
   id: string;
@@ -12,27 +13,6 @@ export interface HistoryEntry {
 
 const STORAGE_KEY = "document-intelligence.history.v1";
 const MAX_ENTRIES = 100;
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isSummary(value: unknown): value is Summary {
-  if (typeof value !== "object" || value === null) return false;
-
-  const candidate = value as Record<string, unknown>;
-
-  return (
-    typeof candidate.title === "string" &&
-    typeof candidate.documentType === "string" &&
-    typeof candidate.summary === "string" &&
-    isStringArray(candidate.keyPoints) &&
-    isStringArray(candidate.mainIdeas) &&
-    isStringArray(candidate.entities) &&
-    isStringArray(candidate.actionItems) &&
-    isStringArray(candidate.improvementSuggestions)
-  );
-}
 
 function isValidEntry(value: unknown): value is HistoryEntry {
   if (typeof value !== "object" || value === null) return false;

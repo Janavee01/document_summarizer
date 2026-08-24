@@ -10,12 +10,14 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buildShareLink, copyTextToClipboard } from "@/lib/share";
+import { buildShareLink } from "@/lib/share";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import type { Summary, SummaryLength } from "@/types/summary";
 import {
   createHistoryEntryFromSummary,
   saveHistoryEntry,
 } from "@/lib/history";
+import { buildClipboardText } from "@/lib/summary-export";
 import { SummaryView } from "@/components/summary/summary-view";
 import { DocumentQa } from "@/components/summary/document-qa";
 import { ExportButtons } from "@/components/summary/export-buttons";
@@ -168,31 +170,7 @@ export function SummaryPanel({ file }: SummaryPanelProps) {
     const handleCopySummary = async () => {
     if (!summary) return;
 
-    const sections = [
-      summary.title,
-      `Document Type: ${summary.documentType}`,
-      "",
-      "Summary",
-      summary.summary,
-    ];
-
-    if (summary.keyPoints.length > 0) {
-      sections.push("", "Key Points", ...summary.keyPoints.map((item) => `• ${item}`));
-    }
-
-    if (summary.mainIdeas.length > 0) {
-      sections.push("", "Main Ideas", ...summary.mainIdeas.map((item) => `• ${item}`));
-    }
-
-    if (summary.actionItems.length > 0) {
-      sections.push("", "Action Items", ...summary.actionItems.map((item) => `• ${item}`));
-    }
-
-    if (summary.entities.length > 0) {
-      sections.push("", "Mentioned", summary.entities.join(", "));
-    }
-
-    const copied = await copyTextToClipboard(sections.join("\n"));
+    const copied = await copyTextToClipboard(buildClipboardText(summary));
 
     if (!copied) return;
 
