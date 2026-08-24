@@ -202,37 +202,6 @@ export async function generateSummary(
 
   const chunks = chunkText(trimmedInput);
 
-  console.log(
-    "========== CHUNKED SUMMARIZATION =========="
-  );
-
-  console.log(
-    "Original characters:",
-    trimmedInput.length
-  );
-
-  console.log(
-    "Number of chunks:",
-    chunks.length
-  );
-
-  console.log(
-    "Total characters across chunks:",
-    chunks.reduce(
-      (total, chunk) => total + chunk.text.length,
-      0
-    )
-  );
-
-  console.log(
-    "Chunk sizes:",
-    chunks.map((chunk) => chunk.text.length)
-  );
-
-  console.log(
-    "============================================"
-  );
-
   try {
     /*
      * Step 1:
@@ -248,25 +217,6 @@ export async function generateSummary(
       )
     );
 
-    console.log(
-      "========== CHUNK SUMMARIES COMPLETE =========="
-    );
-
-    console.log(
-      "Generated summaries:",
-      chunkSummaries.length
-    );
-
-    console.log(
-      "==============================================="
-    );
-
-    console.log("========== CHUNK SUMMARY CONTENT ==========");
-chunkSummaries.forEach((summary, index) => {
-  console.log(`--- Chunk ${index + 1} ---`);
-  console.log(summary);
-});
-console.log("============================================");
     /*
      * Step 2:
      * Give all intermediate summaries to the model
@@ -277,16 +227,6 @@ console.log("============================================");
       length
     );
 
-    console.log("========== FINAL AGGREGATION ==========");
-    console.log("Final prompt characters:", finalPrompt.length);
-    console.log(
-      "Final prompt estimated tokens:",
-      Math.ceil(finalPrompt.length / 4)
-    );
-    console.log("Requested output tokens:", 5000);
-    console.log("JSON mode:", true);
-    console.log("========================================");
-
    const rawText = await callOpenRouter(
   finalPrompt,
   {
@@ -294,16 +234,6 @@ console.log("============================================");
     jsonMode: true,
   }
 );
-
-    console.log(
-      "========== FINAL MODEL RESPONSE =========="
-    );
-
-    console.log(rawText);
-
-    console.log(
-      "=========================================="
-    );
 
     /*
      * Step 3:
@@ -313,18 +243,14 @@ console.log("============================================");
 
     return normalizeSummary(parsed);
   } catch (error) {
-  console.error("========== SUMMARIZATION ERROR ==========");
-  console.error(error);
-  console.error("==========================================");
+    if (error instanceof SummarizationRequestError) {
+      throw error;
+    }
 
-  if (error instanceof SummarizationRequestError) {
-    throw error;
+    throw new SummarizationRequestError(
+      error instanceof Error
+        ? error.message
+        : "Failed to summarize the document."
+    );
   }
-
-  throw new SummarizationRequestError(
-    error instanceof Error
-      ? error.message
-      : "Failed to summarize the document."
-  );
-}
 }

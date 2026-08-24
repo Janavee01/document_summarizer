@@ -50,9 +50,6 @@ export async function POST(request: Request) {
     : "medium";
 
   try {
-    console.log("========== API SUMMARIZE ==========");
-console.log("Received text characters:", text.length);
-console.log("===================================");
     const summary = await generateSummary(text, summaryLength);
     return NextResponse.json(
       { success: true, data: summary },

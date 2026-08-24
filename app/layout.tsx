@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DocLens",
+  title: "Document Intelligence",
   description: "Summarize documents and keep your history.",
 };
 

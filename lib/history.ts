@@ -10,7 +10,7 @@ export interface HistoryEntry {
   summary: Summary;
 }
 
-const STORAGE_KEY = "doclens.history.v1";
+const STORAGE_KEY = "document-intelligence.history.v1";
 const MAX_ENTRIES = 100;
 
 function isStringArray(value: unknown): value is string[] {

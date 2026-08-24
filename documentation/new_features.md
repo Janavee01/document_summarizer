@@ -70,7 +70,7 @@ Every successful summary is saved automatically — no explicit "save" action.
 | Aspect    | Decision                                                                 |
 | --------- | ------------------------------------------------------------------------ |
 | Backend   | Browser `localStorage` (no account system, nothing leaves the device)     |
-| Key       | `doclens.history.v1` — versioned so future schema changes can migrate     |
+| Key       | `document-intelligence.history.v1` — versioned so future schema changes can migrate |
 | Entry     | `{ id, createdAt, fileName, sourceTypeLabel, length, sourceWordCount, summary }` |
 | Order     | Newest first (`createdAt` descending)                                     |
 | Cap       | 100 entries; oldest are dropped on overflow                               |

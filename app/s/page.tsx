@@ -52,7 +52,7 @@ export default function SharedSummaryPage() {
             Shared summary
           </h1>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
-            A document summary generated with DocLens.
+            A document summary generated with Document Intelligence.
           </p>
         </div>
 

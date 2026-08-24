@@ -26,13 +26,13 @@ function BrandMark() {
     <Link
       href="/"
       className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
-      aria-label="DocLens home"
+      aria-label="Document Intelligence home"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white">
         <ScanText aria-hidden="true" className="h-5 w-5" />
       </span>
       <span className="text-base font-semibold tracking-tight text-zinc-900">
-        DocLens
+        Document Intelligence
       </span>
     </Link>
   );

@@ -46,17 +46,6 @@ function combinePages(
     .join("\n\n");
 }
 
-function logSuspiciousPage(
-  pageNumber: number,
-  quality: ReturnType<typeof analyzeTextQuality>,
-): void {
-  console.log(
-    `Page ${pageNumber}: native PDF text is suspicious. ` +
-      `Score: ${quality.qualityScore.toFixed(2)}. ` +
-      `Reasons: ${quality.reasons.join("; ")}`,
-  );
-}
-
 export async function extractHybridPdfText(
   buffer: Buffer,
 ): Promise<HybridExtractionResult> {
@@ -77,12 +66,6 @@ export async function extractHybridPdfText(
   const pagesNeedingOcr = pageQualities
     .filter(({ quality }) => quality.isSuspicious)
     .map(({ page }) => page.pageNumber);
-
-  for (const { page, quality } of pageQualities) {
-    if (quality.isSuspicious) {
-      logSuspiciousPage(page.pageNumber, quality);
-    }
-  }
 
   /*
    * Fast path:
@@ -107,11 +90,6 @@ export async function extractHybridPdfText(
     };
   }
 
-  console.log(
-    `OCR required for ${pagesNeedingOcr.length} ` +
-      `of ${pageTextResult.pageCount} page(s).`,
-  );
-
   const parser = new PDFParse({
     data: buffer,
   });
@@ -132,10 +110,6 @@ export async function extractHybridPdfText(
     const ocrByPage = new Map<number, string>();
 
     for (const page of screenshots.pages) {
-      console.log(
-        `Page ${page.pageNumber}: running OCR...`,
-      );
-
       const {
         data: { text },
       } = await worker.recognize(
