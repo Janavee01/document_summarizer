@@ -4,6 +4,24 @@ A full-stack document intelligence application that extracts text from PDFs and 
 
 **Live:** https://document-summarizer-smoky.vercel.app/
 
+## Screenshots
+
+### Frontend UI
+
+![Frontend UI](./docs/frontend-ui.png)
+
+### Summary History
+
+![Summary History](./docs/summary-history.png)
+
+### Q&A
+
+![Q\&A](./docs/qna.png)
+
+### Summary
+
+![Summary](./docs/summary.png)
+
 ## Features
 
 - Upload PDF and image documents
